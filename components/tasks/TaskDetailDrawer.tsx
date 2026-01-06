@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   X,
   Calendar,
@@ -14,6 +14,10 @@ import {
   CheckCircle,
   Plus,
   UserMinus,
+  Image,
+  File,
+  Trash2,
+  Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,13 +35,32 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { mockActivities, spaceMembers } from "@/lib/mock-data";
+import { mockActivities, spaceMembers, currentUser } from "@/lib/mock-data";
 import { getDueDateInfo, getDueDateStyles, formatDateForInput } from "@/lib/date-utils";
 
 interface Assignee {
   name: string;
   avatar: string;
   initials: string;
+}
+
+interface Attachment {
+  id: number;
+  name: string;
+  type: "image" | "file";
+  url: string;
+  size: string;
+}
+
+interface Comment {
+  id: number;
+  user: {
+    name: string;
+    avatar: string;
+    initials: string;
+  };
+  text: string;
+  time: string;
 }
 
 interface Task {
@@ -56,16 +79,97 @@ interface TaskDetailDrawerProps {
   task: Task | null;
   isOpen: boolean;
   onClose: () => void;
+  onSave?: (taskId: number, updates: Partial<Task>) => void;
 }
 
-export function TaskDetailDrawer({ task, isOpen, onClose }: TaskDetailDrawerProps) {
+export function TaskDetailDrawer({ task, isOpen, onClose, onSave }: TaskDetailDrawerProps) {
   const [taskTitle, setTaskTitle] = useState(task?.title || "");
   const [taskDescription, setTaskDescription] = useState(task?.description || "");
+  const [taskStatus, setTaskStatus] = useState(task?.status || "todo");
+  const [taskDueDate, setTaskDueDate] = useState(task?.dueDate ? formatDateForInput(task.dueDate) : "");
   const [comment, setComment] = useState("");
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [assignees, setAssignees] = useState<Assignee[]>(task?.assignees || (task?.assignee ? [task.assignee] : []));
   const [isAddingAssignee, setIsAddingAssignee] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Reset state when task changes
+  useEffect(() => {
+    if (task) {
+      setTaskTitle(task.title || "");
+      setTaskDescription(task.description || "");
+      setTaskStatus(task.status || "todo");
+      setTaskDueDate(task.dueDate ? formatDateForInput(task.dueDate) : "");
+      setAssignees(task.assignees || (task.assignee ? [task.assignee] : []));
+    }
+  }, [task]);
 
   if (!task || !isOpen) return null;
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach((file) => {
+      const isImage = file.type.startsWith("image/");
+      const newAttachment: Attachment = {
+        id: Date.now() + Math.random(),
+        name: file.name,
+        type: isImage ? "image" : "file",
+        url: URL.createObjectURL(file),
+        size: formatFileSize(file.size),
+      };
+      setAttachments((prev) => [...prev, newAttachment]);
+    });
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  };
+
+  const handleRemoveAttachment = (id: number) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const handleAddComment = () => {
+    if (!comment.trim()) return;
+
+    const newComment: Comment = {
+      id: Date.now(),
+      user: {
+        name: currentUser.name,
+        avatar: currentUser.avatar,
+        initials: currentUser.initials,
+      },
+      text: comment,
+      time: "Just now",
+    };
+    setComments((prev) => [...prev, newComment]);
+    setComment("");
+  };
+
+  const handleSaveChanges = () => {
+    if (onSave) {
+      onSave(task.id, {
+        title: taskTitle,
+        description: taskDescription,
+        status: taskStatus as Task["status"],
+        dueDate: taskDueDate ? new Date(taskDueDate).toISOString() : task.dueDate,
+        assignees,
+      });
+    }
+    setIsSaved(true);
+    setTimeout(() => setIsSaved(false), 2000);
+  };
 
   const dueDateInfo = getDueDateInfo(task.dueDate);
   const dueDateStyles = getDueDateStyles(dueDateInfo.state);
@@ -148,13 +252,13 @@ export function TaskDetailDrawer({ task, isOpen, onClose }: TaskDetailDrawerProp
                   <Flag className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                   Status
                 </label>
-                <Select defaultValue={task.status || "todo"}>
+                <Select value={taskStatus} onValueChange={setTaskStatus}>
                   <SelectTrigger className="dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todo">To Do</SelectItem>
-                    <SelectItem value="inprogress">In Progress</SelectItem>
+                    <SelectItem value="inProgress">In Progress</SelectItem>
                     <SelectItem value="review">Review</SelectItem>
                     <SelectItem value="done">Done</SelectItem>
                   </SelectContent>
@@ -174,7 +278,8 @@ export function TaskDetailDrawer({ task, isOpen, onClose }: TaskDetailDrawerProp
                 </label>
                 <Input
                   type="date"
-                  defaultValue={formatDateForInput(task.dueDate)}
+                  value={taskDueDate}
+                  onChange={(e) => setTaskDueDate(e.target.value)}
                   className="text-sm dark:bg-zinc-900 dark:border-zinc-800 dark:text-white"
                 />
               </div>
@@ -276,12 +381,73 @@ export function TaskDetailDrawer({ task, isOpen, onClose }: TaskDetailDrawerProp
             <div className="space-y-3">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
                 <Paperclip className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                Attachments
+                Attachments ({attachments.length})
               </label>
-              <div className="border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-lg p-4 text-center hover:border-[#6B2FD9]/50 dark:hover:border-[#6B2FD9]/50 transition-colors cursor-pointer">
-                <Paperclip className="w-6 h-6 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+              
+              {/* Attachment List */}
+              {attachments.length > 0 && (
+                <div className="space-y-2">
+                  {attachments.map((attachment) => (
+                    <div
+                      key={attachment.id}
+                      className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-zinc-900 rounded-lg group"
+                    >
+                      {attachment.type === "image" ? (
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-200 dark:bg-zinc-800 flex-shrink-0">
+                          <img
+                            src={attachment.url}
+                            alt={attachment.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg bg-[#6B2FD9]/10 dark:bg-[#6B2FD9]/20 flex items-center justify-center flex-shrink-0">
+                          <File className="w-6 h-6 text-[#6B2FD9]" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {attachment.name}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {attachment.size}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500"
+                        onClick={() => handleRemoveAttachment(attachment.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload Area */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-lg p-4 text-center hover:border-[#6B2FD9]/50 dark:hover:border-[#6B2FD9]/50 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Image className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                  <Paperclip className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Drop files here or click to upload
+                  Click to upload images or files
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                  PNG, JPG, PDF, DOC up to 10MB
                 </p>
               </div>
             </div>
@@ -308,7 +474,7 @@ export function TaskDetailDrawer({ task, isOpen, onClose }: TaskDetailDrawerProp
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                <h3 className="font-semibold text-gray-900 dark:text-white">Activity</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Activity & Comments</h3>
               </div>
 
               {/* Activity Timeline */}
@@ -344,14 +510,40 @@ export function TaskDetailDrawer({ task, isOpen, onClose }: TaskDetailDrawerProp
                     </div>
                   </div>
                 ))}
+
+                {/* New Comments */}
+                {comments.map((c) => (
+                  <div key={c.id} className="flex gap-3">
+                    <Avatar className="h-8 w-8 flex-shrink-0">
+                      <AvatarImage src={c.user.avatar} />
+                      <AvatarFallback className="bg-[#6B2FD9] text-white text-xs">
+                        {c.user.initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="bg-[#6B2FD9]/5 dark:bg-[#6B2FD9]/10 rounded-lg p-3 border border-[#6B2FD9]/20">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-sm text-gray-900 dark:text-white">
+                            {c.user.name}
+                          </span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">commented</span>
+                        </div>
+                        <p className="text-sm text-gray-700 dark:text-gray-300">{c.text}</p>
+                      </div>
+                      <span className="text-xs text-gray-400 dark:text-gray-500 mt-1 inline-block">
+                        {c.time}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               {/* Add Comment */}
               <div className="flex gap-2 pt-4">
                 <Avatar className="h-8 w-8 flex-shrink-0">
-                  <AvatarImage src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop" />
+                  <AvatarImage src={currentUser.avatar} />
                   <AvatarFallback className="bg-[#6B2FD9] text-white text-xs">
-                    JD
+                    {currentUser.initials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 flex gap-2">
@@ -359,14 +551,47 @@ export function TaskDetailDrawer({ task, isOpen, onClose }: TaskDetailDrawerProp
                     placeholder="Write a comment..."
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
                     className="flex-1 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white dark:placeholder:text-gray-500"
                   />
-                  <Button size="icon" className="bg-[#6B2FD9] hover:bg-[#5a27b8]">
+                  <Button 
+                    size="icon" 
+                    className="bg-[#6B2FD9] hover:bg-[#5a27b8]"
+                    onClick={handleAddComment}
+                    disabled={!comment.trim()}
+                  >
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Footer with Save Button */}
+        <div className="border-t border-gray-200 dark:border-zinc-800 p-4 bg-gray-50 dark:bg-zinc-900/50">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {attachments.length > 0 && `${attachments.length} attachment${attachments.length > 1 ? 's' : ''}`}
+              {attachments.length > 0 && comments.length > 0 && ' • '}
+              {comments.length > 0 && `${comments.length} new comment${comments.length > 1 ? 's' : ''}`}
+            </p>
+            <Button 
+              className="bg-[#6B2FD9] hover:bg-[#5a27b8] gap-2"
+              onClick={handleSaveChanges}
+            >
+              {isSaved ? (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  Saved!
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Save Changes
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </div>

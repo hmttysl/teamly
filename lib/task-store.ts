@@ -81,7 +81,7 @@ const initialSpaceKanbans: Record<number, SpaceKanban> = {
         dueDate: addDays(2),
         createdAt: addDays(-5),
         spaceId: 1,
-        space: { name: "Website Redesign", color: "bg-purple-500" },
+        space: { name: "Website Redesign", color: "bg-[#6B2FD9]" },
       },
       {
         id: 102,
@@ -102,7 +102,7 @@ const initialSpaceKanbans: Record<number, SpaceKanban> = {
         dueDate: addDays(5),
         createdAt: addDays(-3),
         spaceId: 1,
-        space: { name: "Website Redesign", color: "bg-purple-500" },
+        space: { name: "Website Redesign", color: "bg-[#6B2FD9]" },
       },
     ],
     inProgress: [
@@ -125,7 +125,7 @@ const initialSpaceKanbans: Record<number, SpaceKanban> = {
         dueDate: addDays(0),
         createdAt: addDays(-7),
         spaceId: 1,
-        space: { name: "Website Redesign", color: "bg-purple-500" },
+        space: { name: "Website Redesign", color: "bg-[#6B2FD9]" },
       },
     ],
     review: [
@@ -148,7 +148,7 @@ const initialSpaceKanbans: Record<number, SpaceKanban> = {
         dueDate: addDays(1),
         createdAt: addDays(-4),
         spaceId: 1,
-        space: { name: "Website Redesign", color: "bg-purple-500" },
+        space: { name: "Website Redesign", color: "bg-[#6B2FD9]" },
       },
     ],
     done: [
@@ -172,7 +172,7 @@ const initialSpaceKanbans: Record<number, SpaceKanban> = {
         createdAt: addDays(-10),
         completedAt: addDays(0),
         spaceId: 1,
-        space: { name: "Website Redesign", color: "bg-purple-500" },
+        space: { name: "Website Redesign", color: "bg-[#6B2FD9]" },
       },
     ],
   },

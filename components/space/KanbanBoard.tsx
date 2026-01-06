@@ -195,7 +195,7 @@ interface KanbanBoardProps {
   spaceColor?: string;
 }
 
-export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-purple-500" }: KanbanBoardProps) {
+export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-[#6B2FD9]" }: KanbanBoardProps) {
   const { kanban, moveTask, addTask, deleteTask } = useSpaceTasks(spaceId);
   
   // Get space info
@@ -625,7 +625,7 @@ export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-purple-500" }
                       <div className="flex items-center gap-2 bg-gray-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full">
                         <Avatar className="w-5 h-5">
                           <AvatarImage src={currentUser.avatar} />
-                          <AvatarFallback className="bg-purple-500 text-white text-xs">
+                          <AvatarFallback className="bg-[#6B2FD9] text-white text-xs">
                             {currentUser.initials}
                           </AvatarFallback>
                         </Avatar>

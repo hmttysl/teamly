@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const spaceColors = [
-  { name: "Purple", class: "bg-purple-500" },
+  { name: "Purple", class: "bg-[#6B2FD9]" },
   { name: "Red", class: "bg-red-500" },
   { name: "Pink", class: "bg-pink-500" },
   { name: "Blue", class: "bg-blue-500" },
@@ -31,14 +31,14 @@ interface CreateSpaceDialogProps {
 
 export function CreateSpaceDialog({ children, onCreateSpace }: CreateSpaceDialogProps) {
   const [spaceName, setSpaceName] = useState("");
-  const [selectedColor, setSelectedColor] = useState("bg-purple-500");
+  const [selectedColor, setSelectedColor] = useState("bg-[#6B2FD9]");
   const [open, setOpen] = useState(false);
 
   const handleCreate = () => {
     if (spaceName.trim()) {
       onCreateSpace?.(spaceName.trim(), selectedColor);
       setSpaceName("");
-      setSelectedColor("bg-purple-500");
+      setSelectedColor("bg-[#6B2FD9]");
       setOpen(false);
     }
   };

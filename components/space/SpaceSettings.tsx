@@ -22,7 +22,7 @@ interface SpaceSettingsProps {
 const currentUserRole: Role = "Owner";
 
 const colorOptions = [
-  { name: "Purple", class: "bg-purple-500" },
+  { name: "Purple", class: "bg-[#6B2FD9]" },
   { name: "Red", class: "bg-red-500" },
   { name: "Pink", class: "bg-pink-500" },
   { name: "Blue", class: "bg-blue-500" },
@@ -35,7 +35,7 @@ const colorOptions = [
 export function SpaceSettings({ 
   spaceName = "", 
   spaceId,
-  spaceColor = "bg-purple-500",
+  spaceColor = "bg-[#6B2FD9]",
   onLeaveSpace,
   onDeleteSpace,
   onArchiveSpace,

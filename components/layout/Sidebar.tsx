@@ -26,7 +26,7 @@ export function Sidebar({ activeView, activeSpaceId, onViewChange, inboxUnreadCo
       {/* Team Name */}
       <div className="p-6 border-b border-gray-200 dark:border-zinc-800">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
+          <div className="w-10 h-10 bg-gradient-to-br from-[#6B2FD9] to-blue-500 rounded-lg flex items-center justify-center">
             <span className="text-white font-semibold">T</span>
           </div>
           <div>
@@ -117,7 +117,7 @@ export function Sidebar({ activeView, activeSpaceId, onViewChange, inboxUnreadCo
       {/* User Profile */}
       <div className="p-4 border-t border-gray-200 dark:border-zinc-800">
         <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center overflow-hidden">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6B2FD9] to-blue-500 flex items-center justify-center overflow-hidden">
             {currentUser.avatar ? (
               <img src={currentUser.avatar} alt={currentUser.name} className="w-full h-full object-cover" />
             ) : (

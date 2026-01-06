@@ -1,10 +1,10 @@
 "use client";
 
 import { CheckCheck, UserPlus, AtSign, Check, Calendar, AlertCircle, MessageSquare, CheckCircle2, X } from "lucide-react";
-import { useState, useMemo } from "react";
-import { mockInboxItems, InboxItem, InboxItemType, currentUser } from "@/lib/mock-data";
+import { useState } from "react";
+import { InboxItem, InboxItemType, currentUser } from "@/lib/mock-data";
 import { getDueDateInfo, getDueDateStyles } from "@/lib/date-utils";
-import { useTasks } from "@/lib/use-tasks";
+import { useInbox } from "@/lib/use-inbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
@@ -45,53 +45,19 @@ interface InboxProps {
 }
 
 export function Inbox({ onTaskClick, onAcceptInvite, onDeclineInvite }: InboxProps) {
-  const { kanban } = useTasks();
-  const [items, setItems] = useState<InboxItem[]>(mockInboxItems);
+  const { items, unreadCount, markAsRead, markAllAsRead, dismissItem } = useInbox();
   const [filter, setFilter] = useState<"all" | "unread" | InboxItemType>("all");
 
-  // Generate dynamic notifications based on task assignments
-  const dynamicNotifications = useMemo(() => {
-    const notifications: InboxItem[] = [];
-    let notificationId = 100;
-
-    // Check for tasks assigned to current user in all columns
-    const allTasks = [...kanban.todo, ...kanban.inProgress, ...kanban.review, ...kanban.done];
-    
-    allTasks.forEach(task => {
-      const isUserAssigned = task.assignees && task.assignees.length > 0
-        ? task.assignees.some(a => a.name === currentUser.name)
-        : task.assignee?.name === currentUser.name;
-
-      // Only add if user is assigned and we don't already have this notification
-      if (isUserAssigned && !items.some(item => item.taskId === task.id && item.type === "task_assigned")) {
-        // Don't add dynamic notifications for now - we use the mock items
-      }
-    });
-
-    return notifications;
-  }, [kanban, items]);
-
-  // Combine static and dynamic notifications
-  const allItems = useMemo(() => {
-    // Filter to only show items relevant to current user
-    return [...items, ...dynamicNotifications].filter(item => {
-      // All inbox items are already for the current user (John Doe)
-      return true;
-    });
-  }, [items, dynamicNotifications]);
-
   // Apply filter
-  const filteredItems = useMemo(() => {
-    if (filter === "all") return allItems;
-    if (filter === "unread") return allItems.filter(item => !item.isRead);
-    return allItems.filter(item => item.type === filter);
-  }, [allItems, filter]);
+  const filteredItems = (() => {
+    if (filter === "all") return items;
+    if (filter === "unread") return items.filter(item => !item.isRead);
+    return items.filter(item => item.type === filter);
+  })();
 
   const handleItemClick = (item: InboxItem) => {
     // Mark as read
-    setItems((prevItems) =>
-      prevItems.map((i) => (i.id === item.id ? { ...i, isRead: true } : i))
-    );
+    markAsRead(item.id);
 
     // Open task/space
     if (item.taskId && onTaskClick) {
@@ -101,21 +67,17 @@ export function Inbox({ onTaskClick, onAcceptInvite, onDeclineInvite }: InboxPro
 
   const handleMarkAsRead = (itemId: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    setItems((prevItems) =>
-      prevItems.map((i) => (i.id === itemId ? { ...i, isRead: true } : i))
-    );
+    markAsRead(itemId);
   };
 
   const handleMarkAllAsRead = () => {
-    setItems((prevItems) => prevItems.map((i) => ({ ...i, isRead: true })));
+    markAllAsRead();
   };
 
   const handleAcceptInvite = (item: InboxItem, e: React.MouseEvent) => {
     e.stopPropagation();
-    // Mark as read and remove from list
-    setItems((prevItems) =>
-      prevItems.filter((i) => i.id !== item.id)
-    );
+    // Remove from list
+    dismissItem(item.id);
     if (item.spaceId && onAcceptInvite) {
       onAcceptInvite(item.spaceId);
     }
@@ -123,10 +85,8 @@ export function Inbox({ onTaskClick, onAcceptInvite, onDeclineInvite }: InboxPro
 
   const handleDeclineInvite = (item: InboxItem, e: React.MouseEvent) => {
     e.stopPropagation();
-    // Mark as read and remove from list
-    setItems((prevItems) =>
-      prevItems.filter((i) => i.id !== item.id)
-    );
+    // Remove from list
+    dismissItem(item.id);
     if (item.spaceId && onDeclineInvite) {
       onDeclineInvite(item.spaceId);
     }
@@ -134,12 +94,8 @@ export function Inbox({ onTaskClick, onAcceptInvite, onDeclineInvite }: InboxPro
 
   const handleDismiss = (itemId: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    setItems((prevItems) =>
-      prevItems.filter((i) => i.id !== itemId)
-    );
+    dismissItem(itemId);
   };
-
-  const unreadCount = allItems.filter((item) => !item.isRead).length;
 
   const filterButtons: { label: string; value: "all" | "unread" | InboxItemType }[] = [
     { label: "All", value: "all" },
@@ -359,10 +315,10 @@ export function Inbox({ onTaskClick, onAcceptInvite, onDeclineInvite }: InboxPro
         )}
 
         {/* Summary Stats */}
-        {allItems.length > 0 && (
+        {items.length > 0 && (
           <div className="mt-8 pt-6 border-t border-gray-200 dark:border-zinc-800">
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-              Showing {filteredItems.length} of {allItems.length} notifications for {currentUser.name}
+              Showing {filteredItems.length} of {items.length} notifications for {currentUser.name}
             </p>
           </div>
         )}

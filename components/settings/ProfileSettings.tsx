@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Camera, User, Bell, Globe, Shield, LogOut, Check } from "lucide-react";
+import { useState, useRef } from "react";
+import { Camera, User, Bell, Globe, Shield, LogOut, Check, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,7 +11,17 @@ export function ProfileSettings() {
   // Profile state
   const [name, setName] = useState(currentUser.name);
   const [email, setEmail] = useState(currentUser.email);
+  const [avatarUrl, setAvatarUrl] = useState(currentUser.avatar);
   const [profileSaved, setProfileSaved] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setAvatarUrl(url);
+    }
+  };
 
   // Notifications state
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -89,17 +99,35 @@ export function ProfileSettings() {
             <div className="flex items-center gap-6">
               <div className="relative">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage src={currentUser.avatar} />
+                  <AvatarImage src={avatarUrl} />
                   <AvatarFallback className="bg-[#6B2FD9] text-white text-xl">{currentUser.initials}</AvatarFallback>
                 </Avatar>
-                <button className="absolute bottom-0 right-0 bg-[#6B2FD9] hover:bg-[#5a27b8] text-white rounded-full p-2 shadow-lg transition-colors">
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
+                <button 
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="absolute bottom-0 right-0 bg-[#6B2FD9] hover:bg-[#5a27b8] text-white rounded-full p-2 shadow-lg transition-colors"
+                >
                   <Camera className="w-4 h-4" />
                 </button>
               </div>
               <div>
                 <h3 className="font-medium text-gray-900 dark:text-white mb-1">Profile Photo</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Upload a new photo or update your current one</p>
-                <Button variant="outline" size="sm">Upload New Photo</Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  Upload New Photo
+                </Button>
               </div>
             </div>
 
