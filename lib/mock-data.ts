@@ -1,6 +1,6 @@
 // Spaces data
 export const spaces = [
-  { id: 1, name: "Website Redesign", color: "bg-[#6B2FD9]" },
+  { id: 1, name: "Website Redesign", color: "bg-purple-500" },
   { id: 2, name: "Mobile App", color: "bg-red-500" },
   { id: 3, name: "Marketing Campaign", color: "bg-pink-500" },
 ];
@@ -58,7 +58,7 @@ export const myTasks = [
     createdAt: addDays(-5),
     space: {
       name: "Website Redesign",
-      color: "bg-[#6B2FD9]",
+      color: "bg-purple-500",
     },
   },
   {
@@ -158,7 +158,7 @@ export const kanbanTasks = {
       createdAt: addDays(-5),
       space: {
         name: "Website Redesign",
-        color: "bg-[#6B2FD9]",
+        color: "bg-purple-500",
       },
     },
     {
@@ -204,7 +204,7 @@ export const kanbanTasks = {
       createdAt: addDays(-2),
       space: {
         name: "Website Redesign",
-        color: "bg-[#6B2FD9]",
+        color: "bg-purple-500",
       },
     },
   ],
@@ -310,7 +310,7 @@ export const kanbanTasks = {
       createdAt: addDays(-5),
       space: {
         name: "Website Redesign",
-        color: "bg-[#6B2FD9]",
+        color: "bg-purple-500",
       },
     },
   ],
@@ -401,7 +401,7 @@ export const mockInboxItems: InboxItem[] = [
     title: "Design new landing page",
     context: "Sarah Chen assigned you to this task",
     spaceName: "Website Redesign",
-    spaceColor: "bg-[#6B2FD9]",
+    spaceColor: "bg-purple-500",
     timestamp: "2h ago",
     isRead: false,
     taskId: 1,

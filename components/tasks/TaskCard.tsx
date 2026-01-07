@@ -29,7 +29,7 @@ export function TaskCard({ title, description, assignee, assignees, dueDate, onC
 
   return (
     <div 
-      className="bg-white dark:bg-card rounded-lg border border-gray-200 dark:border-zinc-800 p-4 hover:shadow-md transition-shadow cursor-pointer group"
+      className="bg-white dark:bg-card rounded-lg border border-gray-200 dark:border-zinc-700 p-4 hover:shadow-md transition-shadow cursor-pointer group"
       onClick={onClick}
     >
       {/* Title */}

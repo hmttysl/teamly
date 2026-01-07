@@ -30,11 +30,17 @@ export function useTasks() {
     return unsubscribe;
   }, []);
 
+  // Add task to the default space (spaceId 1)
+  const addTaskToDefault = useCallback((column: KanbanColumn, task: Omit<Task, "id" | "status" | "spaceId">) => {
+    addTask(1, column, task);
+  }, []);
+
   return {
     // Combined kanban from all spaces
     kanban: getKanbanTasks(),
     allTasks: getAllTasks(),
     completedThisWeek: getCompletedThisWeek(),
+    addTask: addTaskToDefault,
   };
 }
 

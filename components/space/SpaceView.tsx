@@ -20,7 +20,7 @@ type TabType = "board" | "members" | "settings";
 export function SpaceView({ 
   spaceId, 
   spaceName,
-  spaceColor = "bg-[#6B2FD9]",
+  spaceColor = "bg-purple-500",
   onLeaveSpace,
   onDeleteSpace,
   onArchiveSpace,

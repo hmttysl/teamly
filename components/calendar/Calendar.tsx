@@ -344,7 +344,7 @@ export function Calendar() {
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                 selectedTask.status === "done"
                   ? "bg-green-600"
-                  : "bg-[#6B2FD9]"
+                  : "bg-purple-600"
               }`}>
                 {selectedTask.status === "done" ? (
                   <CheckCircle2 className="w-4 h-4 text-white" />
@@ -423,7 +423,7 @@ export function Calendar() {
                     <div key={idx} className="flex items-center gap-3">
                       <Avatar className="w-10 h-10">
                         <AvatarImage src={assignee.avatar} />
-                        <AvatarFallback className="bg-[#6B2FD9] text-white">
+                        <AvatarFallback className="bg-purple-600 text-white">
                           {assignee.initials}
                         </AvatarFallback>
                       </Avatar>
@@ -431,7 +431,7 @@ export function Calendar() {
                         <p className="text-gray-900 dark:text-white text-sm font-medium flex items-center gap-2">
                           {assignee.name}
                           {assignee.name === currentUser.name && (
-                            <span className="text-xs bg-[#6B2FD9]/10 dark:bg-[#6B2FD9]/30 text-[#6B2FD9] px-2 py-0.5 rounded">
+                            <span className="text-xs bg-purple-100 dark:bg-purple-600/30 text-purple-700 dark:text-purple-400 px-2 py-0.5 rounded">
                               You
                             </span>
                           )}
@@ -471,7 +471,7 @@ export function Calendar() {
                 {selectedTask.status !== "done" && (
                   <Button 
                     onClick={() => handleCompleteTask(selectedTask.id)}
-                    className="w-full bg-[#6B2FD9] hover:bg-[#6B2FD9]/90 text-white"
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                   >
                     <CheckCircle2 className="w-4 h-4 mr-2" />
                     Mark as Complete

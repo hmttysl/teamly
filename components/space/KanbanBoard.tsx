@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSpaceTasks, type Task, type KanbanColumn } from "@/lib/use-tasks";
 import { currentUser, spaceMembers, spaces } from "@/lib/mock-data";
+import { useActivity } from "@/lib/use-activity";
 
 // All available members for assignment
 const allMembers = [
@@ -45,7 +46,7 @@ interface ColumnProps {
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent, column: KanbanColumn) => void;
   onAddTask: (column: KanbanColumn) => void;
-  onDeleteTask: (taskId: number) => void;
+  onDeleteTask: (taskId: number, taskTitle: string) => void;
   onTitleChange: (newTitle: string) => void;
   isEditingTitle: boolean;
   onStartEditTitle: () => void;
@@ -174,7 +175,7 @@ function KanbanColumn({
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="text-red-600"
-                    onClick={() => onDeleteTask(task.id)}
+                    onClick={() => onDeleteTask(task.id, task.title)}
                   >
                     <Trash2 className="w-3 h-3 mr-2" />
                     Delete
@@ -195,8 +196,9 @@ interface KanbanBoardProps {
   spaceColor?: string;
 }
 
-export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-[#6B2FD9]" }: KanbanBoardProps) {
+export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-purple-500" }: KanbanBoardProps) {
   const { kanban, moveTask, addTask, deleteTask } = useSpaceTasks(spaceId);
+  const { addActivity } = useActivity();
   
   // Get space info
   const spaceInfo = spaces.find(s => s.id === spaceId) || { name: spaceName || "Space", color: spaceColor };
@@ -243,10 +245,27 @@ export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-[#6B2FD9]" }:
     e.dataTransfer.dropEffect = "move";
   };
 
+  const columnNames: Record<KanbanColumn, string> = {
+    todo: "To Do",
+    inProgress: "In Progress",
+    review: "Review",
+    done: "Done",
+  };
+
   const handleDrop = (e: React.DragEvent, targetColumn: KanbanColumn) => {
     e.preventDefault();
     if (draggedTask && draggedTask.column !== targetColumn) {
       moveTask(draggedTask.task.id, draggedTask.column, targetColumn);
+      
+      // Add activity for move
+      const activityType = targetColumn === "done" ? "complete" : "move";
+      addActivity(activityType, draggedTask.task.title, {
+        taskId: draggedTask.task.id,
+        spaceId,
+        spaceName: spaceInfo.name,
+        fromColumn: columnNames[draggedTask.column],
+        toColumn: columnNames[targetColumn],
+      });
     }
     setDraggedTask(null);
   };
@@ -346,6 +365,12 @@ export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-[#6B2FD9]" }:
         },
       });
       
+      // Add activity for task creation
+      addActivity("create", newTaskTitle, {
+        spaceId,
+        spaceName: spaceInfo.name,
+      });
+      
       setShowAddTaskModal(null);
       resetForm();
     }
@@ -361,8 +386,17 @@ export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-[#6B2FD9]" }:
     setAssignSelf(true);
   };
 
-  const handleDeleteTask = (taskId: number) => {
+  const handleDeleteTask = (taskId: number, taskTitle?: string) => {
     deleteTask(taskId);
+    
+    // Add activity for task deletion
+    if (taskTitle) {
+      addActivity("delete", taskTitle, {
+        taskId,
+        spaceId,
+        spaceName: spaceInfo.name,
+      });
+    }
   };
 
   const handleStartEditTitle = (column: KanbanColumn) => {
@@ -625,7 +659,7 @@ export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-[#6B2FD9]" }:
                       <div className="flex items-center gap-2 bg-gray-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full">
                         <Avatar className="w-5 h-5">
                           <AvatarImage src={currentUser.avatar} />
-                          <AvatarFallback className="bg-[#6B2FD9] text-white text-xs">
+                          <AvatarFallback className="bg-purple-500 text-white text-xs">
                             {currentUser.initials}
                           </AvatarFallback>
                         </Avatar>
