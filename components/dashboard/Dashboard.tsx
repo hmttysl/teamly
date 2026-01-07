@@ -1,16 +1,19 @@
 "use client";
 
 import { useState, useRef, useMemo } from "react";
-import { ChevronLeft, ChevronRight, TrendingUp, CheckCircle2, ListTodo, CalendarClock, Target, X, History, Sparkles, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, TrendingUp, CheckCircle2, ListTodo, CalendarClock, Target, X, History, Sparkles, Plus, Flame, LineChart as ChartIcon } from "lucide-react";
 import { DashboardTaskCard } from "./DashboardTaskCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TaskDetailDrawer } from "@/components/tasks/TaskDetailDrawer";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { currentUser, spaces } from "@/lib/mock-data";
 import { useTasks } from "@/lib/use-tasks";
 import { useActivity } from "@/lib/use-activity";
 import { addTask as addTaskToStore } from "@/lib/task-store";
+
+// Currently online users (simulated)
+const onlineUsers = ["John Doe", "Sarah Jenkins", "Alex Riviera"];
 
 // Get dynamic greeting based on time
 function getGreeting(): string {
@@ -210,46 +213,88 @@ export function Dashboard() {
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         {/* Welcome Banner */}
         <section className="bg-gradient-to-r from-[#6B2FD9] to-[#8b5cf6] p-8 md:p-10 rounded-[32px] shadow-xl relative overflow-hidden group/banner">
-          {/* Floating Sparkle with Glow */}
-          <div className="absolute right-8 md:right-16 top-1/2 -translate-y-1/2 transition-all duration-700 group-hover/banner:scale-105">
-            {/* Subtle outer glow */}
-            <div className="absolute inset-0 bg-white/10 rounded-full blur-[40px] scale-[2] opacity-0 group-hover/banner:opacity-100 transition-all duration-1000" />
-            {/* Sparkle icon */}
-            <Sparkles 
-              className="relative w-20 h-20 md:w-28 md:h-28 text-white/25 
-                group-hover/banner:text-white/90 
-                group-hover/banner:drop-shadow-[0_0_15px_rgba(255,255,255,0.6)] 
-                transition-all duration-700 ease-out" 
-            />
+          {/* Sparkle Decoration */}
+          <div className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 w-48 h-48 md:w-64 md:h-64 flex items-center justify-center select-none pointer-events-none animate-float">
+            {/* Dynamic Aura Layers */}
+            <div className="absolute inset-0 bg-white/10 blur-[90px] rounded-full scale-125 animate-sparkle" />
+            <div className="absolute w-36 h-36 md:w-48 md:h-48 bg-purple-400/30 blur-[50px] rounded-full animate-shimmer" />
+            
+            {/* Primary Shining Star */}
+            <svg
+              viewBox="0 0 100 100"
+              className="relative z-10 w-24 h-24 md:w-32 md:h-32 text-white drop-shadow-[0_0_25px_rgba(255,255,255,1)] animate-sparkle"
+            >
+              <path
+                fill="currentColor"
+                d="M50 0 C52 38 62 48 100 50 C62 52 52 62 50 100 C48 62 38 52 0 50 C38 48 48 38 50 0"
+              />
+            </svg>
+
+            {/* Orbiting Satellites */}
+            <div className="absolute animate-orbit-fast">
+              <svg viewBox="0 0 100 100" className="w-6 h-6 md:w-8 md:h-8 text-white filter drop-shadow-[0_0_10px_white]">
+                <path
+                  fill="currentColor"
+                  d="M50 0 C52 35 65 48 100 50 C65 52 52 65 50 100 C48 65 35 52 0 50 C35 48 48 35 50 0"
+                />
+              </svg>
+            </div>
+
+            <div className="absolute animate-orbit-slow" style={{ animationDelay: '-4s' }}>
+              <div className="w-2 h-2 md:w-3 md:h-3 bg-white rounded-full blur-[1px] shadow-[0_0_15px_white]" />
+            </div>
+            
+            <div className="absolute animate-orbit-slow" style={{ animationDelay: '-8s' }}>
+              <svg viewBox="0 0 100 100" className="w-4 h-4 md:w-6 md:h-6 text-white/50">
+                <path
+                  fill="currentColor"
+                  d="M50 0 C52 35 65 48 100 50 C65 52 52 65 50 100 C48 65 35 52 0 50 C35 48 48 35 50 0"
+                />
+              </svg>
+            </div>
+
+            {/* Magic Dust Particles */}
+            {[...Array(8)].map((_, i) => (
+              <div 
+                key={i}
+                className="absolute w-1 h-1 bg-white rounded-full animate-shimmer"
+                style={{
+                  top: `${20 + Math.random() * 60}%`,
+                  left: `${20 + Math.random() * 60}%`,
+                  animationDelay: `${i * 0.4}s`,
+                  opacity: 0.8
+                }}
+              />
+            ))}
           </div>
 
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 pr-28 md:pr-40">
-            <div className="flex-1 space-y-4">
+          <div className="relative z-10 pr-48 md:pr-72">
+            <div className="space-y-4">
               <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight tracking-tight max-w-xl">
-                Hi {currentUser.name.split(' ')[0]}! Ready to make today productive? 👋
+                Hi {currentUser.name.split(' ')[0]}! Ready to make today productive?
               </h2>
               
               <div className="space-y-2">
                 <p className="text-white/80 text-sm md:text-base">
                   You&apos;ve completed <span className="font-bold text-white">{weeklyProgress}%</span> of your weekly goals.
                 </p>
-                <div className="w-full max-w-sm h-2 bg-white/20 rounded-full overflow-hidden">
+                <div className="w-full max-w-lg h-2 bg-white/20 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)] transition-all duration-1000"
                     style={{ width: `${weeklyProgress}%` }}
                   />
                 </div>
               </div>
-            </div>
 
-            {/* Create Task Button */}
-            <button 
-              onClick={() => setShowCreateTaskModal(true)}
-              className="bg-white hover:bg-gray-50 text-[#6B2FD9] px-6 py-4 rounded-2xl font-bold shadow-lg transition-all hover:scale-105 hover:shadow-xl active:scale-95 flex items-center justify-center gap-2 self-start lg:self-center"
-            >
-              <Plus size={20} className="stroke-[3]" />
-              <span>Create Task</span>
-            </button>
+              {/* Create Task Button */}
+              <button 
+                onClick={() => setShowCreateTaskModal(true)}
+                className="bg-white hover:bg-gray-50 text-[#6B2FD9] px-4 py-2.5 rounded-xl font-semibold shadow-lg transition-all hover:scale-105 hover:shadow-xl active:scale-95 flex items-center gap-1.5 text-sm"
+              >
+                <Plus size={16} className="stroke-[2.5]" />
+                <span>Create Task</span>
+              </button>
+            </div>
           </div>
         </section>
 
@@ -318,58 +363,65 @@ export function Dashboard() {
         {/* Weekly Progress & Recent Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Weekly Progress Chart */}
-          <div className="lg:col-span-2 bg-white dark:bg-card rounded-2xl border border-gray-200 dark:border-zinc-800 p-6 shadow-sm">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-[#6B2FD9]/10 dark:bg-[#6B2FD9]/20 rounded-lg">
-                <TrendingUp className="w-5 h-5 text-[#6B2FD9]" />
+          <div className="lg:col-span-2 bg-white dark:bg-card rounded-[32px] border border-gray-200 dark:border-zinc-800 p-8 shadow-sm flex flex-col">
+            {/* Header */}
+            <div className="flex items-center gap-4 mb-8">
+              <div className="p-3 bg-purple-500/10 text-purple-400 rounded-2xl">
+                <ChartIcon size={24} />
               </div>
               <div>
-                <h2 className="font-semibold text-gray-900 dark:text-white">Weekly Progress</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Tasks completed this week</p>
+                <h3 className="font-bold text-xl text-gray-900 dark:text-white">Weekly Progress</h3>
+                <p className="text-sm text-gray-500">Tasks completed this week</p>
               </div>
             </div>
-            <div className="relative">
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={weeklyData} margin={{ top: 20, right: 10, left: -20, bottom: 5 }}>
+            
+            {/* Chart */}
+            <div className="flex-1 w-full relative min-h-[250px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={weeklyData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#a78bfa" />
-                      <stop offset="100%" stopColor="#8b5cf6" />
+                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} strokeOpacity={0.5} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" className="dark:stroke-white/5 stroke-gray-200" />
                   <XAxis 
                     dataKey="day" 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#9ca3af', fontSize: 12 }}
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#6b7280', fontSize: 12 }} 
+                    dy={10}
                     tickFormatter={(value) => value.substring(0, 3)}
                   />
                   <YAxis 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#9ca3af', fontSize: 12 }}
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#6b7280', fontSize: 12 }} 
+                    dx={-10}
                     domain={[0, 'dataMax + 2']}
                     allowDecimals={false}
                   />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '12px',
-                      fontSize: '12px',
-                      padding: '10px 14px',
-                      boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#17171a', 
+                      border: 'none', 
+                      borderRadius: '12px', 
+                      color: '#fff',
+                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)'
                     }}
-                    labelStyle={{ color: '#374151', fontWeight: 600, marginBottom: '4px' }}
-                    itemStyle={{ color: '#8b5cf6', fontWeight: 500 }}
+                    itemStyle={{ color: '#8b5cf6' }}
+                    cursor={{ stroke: '#8b5cf6', strokeWidth: 1, strokeDasharray: '4 4' }}
                     formatter={(value: number) => [`${value} tasks`, 'Completed']}
+                    labelFormatter={(label) => label}
                   />
-                  <Line 
+                  <Area 
                     type="monotone" 
                     dataKey="completed" 
-                    stroke="url(#lineGradient)" 
-                    strokeWidth={3}
+                    stroke="#8b5cf6" 
+                    strokeWidth={4}
+                    fillOpacity={1} 
+                    fill="url(#colorValue)" 
                     dot={(props: any) => {
                       const { cx, cy, payload } = props;
                       const isPeak = payload.day === peakDay.day && peakDay.completed > 0;
@@ -379,35 +431,27 @@ export function Dashboard() {
                           <circle
                             cx={cx}
                             cy={cy}
-                            r={isPeak ? 7 : 4}
-                            fill={isPeak ? '#7c3aed' : '#8b5cf6'}
-                            stroke="white"
-                            strokeWidth={isPeak ? 3 : 2}
-                            style={{
-                              filter: isPeak ? 'drop-shadow(0 2px 4px rgba(139, 92, 246, 0.4))' : 'none',
-                            }}
+                            r={6}
+                            fill="#8b5cf6"
+                            stroke="#fff"
+                            strokeWidth={2}
                           />
                           {isPeak && (
-                            <text
-                              x={cx}
-                              y={cy - 18}
-                              textAnchor="middle"
-                              fontSize={16}
-                            >
-                              🔥
-                            </text>
+                            <foreignObject x={cx - 12} y={cy - 44} width={24} height={24}>
+                              <div className="flex items-center justify-center">
+                                <Flame 
+                                  className="text-orange-500 drop-shadow-[0_0_12px_rgba(249,115,22,0.8)]"
+                                  size={20}
+                                />
+                              </div>
+                            </foreignObject>
                           )}
                         </g>
                       );
                     }}
-                    activeDot={{ 
-                      r: 6, 
-                      fill: '#8b5cf6', 
-                      stroke: 'white', 
-                      strokeWidth: 2,
-                    }}
+                    activeDot={{ r: 8, fill: '#8b5cf6', strokeWidth: 0 }}
                   />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             </div>
             
@@ -444,7 +488,9 @@ export function Dashboard() {
                         alt={activity.user.name}
                         className="w-10 h-10 rounded-full object-cover"
                       />
-                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-zinc-900"></div>
+                      <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-zinc-900 ${
+                        onlineUsers.includes(activity.user.name) ? "bg-green-500" : "bg-gray-400"
+                      }`}></div>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-900 dark:text-white">
@@ -567,12 +613,9 @@ export function Dashboard() {
                         className="w-10 h-10 rounded-full object-cover"
                       />
                       <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-zinc-900 ${
-                        activity.type === "complete" ? "bg-green-500" :
-                        activity.type === "create" ? "bg-blue-500" :
-                        activity.type === "move" ? "bg-yellow-500" :
-                        activity.type === "comment" ? "bg-[#6B2FD9]" :
-                        activity.type === "delete" ? "bg-red-500" :
-                        "bg-gray-400"
+                        onlineUsers.includes(activity.user.name) 
+                          ? "bg-green-500" 
+                          : "bg-gray-400"
                       }`}></div>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -650,20 +693,20 @@ export function Dashboard() {
                       onClick={() => setSelectedSpaceId(space.id)}
                       className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
                         selectedSpaceId === space.id
-                          ? "border-[#6B2FD9] bg-[#6B2FD9]/10 dark:bg-[#6B2FD9]/20"
+                          ? "border-[#6B2FD9] bg-[#6B2FD9]/10 dark:bg-[#6B2FD9]/40"
                           : "border-gray-200 dark:border-zinc-700 hover:border-gray-300 dark:hover:border-zinc-600"
                       }`}
                     >
                       <div className={`w-3 h-3 rounded-full ${space.color}`} />
                       <span className={`text-sm font-medium ${
                         selectedSpaceId === space.id 
-                          ? "text-[#6B2FD9]" 
+                          ? "text-[#6B2FD9] dark:text-[#a78bfa]" 
                           : "text-gray-700 dark:text-gray-300"
                       }`}>
                         {space.name}
                       </span>
                       {selectedSpaceId === space.id && (
-                        <CheckCircle2 className="w-4 h-4 text-[#6B2FD9] ml-auto" />
+                        <CheckCircle2 className="w-4 h-4 text-[#6B2FD9] dark:text-[#a78bfa] ml-auto" />
                       )}
                     </button>
                   ))}

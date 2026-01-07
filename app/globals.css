@@ -191,3 +191,31 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Sparkle Banner Animations */
+@keyframes sparkle-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); filter: blur(0px); }
+  50% { opacity: 0.7; transform: scale(1.1); filter: blur(2px); }
+}
+
+@keyframes orbit {
+  from { transform: rotate(0deg) translateX(60px) rotate(0deg); }
+  to { transform: rotate(360deg) translateX(60px) rotate(-360deg); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+}
+
+@keyframes shimmer {
+  0% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0.3; transform: scale(0.8); }
+}
+
+.animate-sparkle { animation: sparkle-pulse 3s infinite ease-in-out; }
+.animate-orbit-slow { animation: orbit 12s infinite linear; }
+.animate-orbit-fast { animation: orbit 8s infinite linear reverse; }
+.animate-float { animation: float 5s infinite ease-in-out; }
+.animate-shimmer { animation: shimmer 2s infinite ease-in-out; }
