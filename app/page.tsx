@@ -8,15 +8,16 @@ import { Inbox } from "@/components/inbox/Inbox";
 import { Calendar } from "@/components/calendar/Calendar";
 import { SpaceView } from "@/components/space/SpaceView";
 import { ProfileSettings } from "@/components/settings/ProfileSettings";
+import EchoPage from "@/components/echo/EchoPage";
 import { spaces as initialSpaces } from "@/lib/mock-data";
 
 export default function Home() {
-  const [activeView, setActiveView] = useState<"dashboard" | "space" | "inbox" | "calendar" | "settings">("dashboard");
+  const [activeView, setActiveView] = useState<"dashboard" | "space" | "inbox" | "calendar" | "settings" | "echo">("dashboard");
   const [activeSpaceId, setActiveSpaceId] = useState<number | undefined>(1);
   const [inboxUnreadCount, setInboxUnreadCount] = useState(3);
   const [spaces, setSpaces] = useState(initialSpaces);
 
-  const handleViewChange = (view: "dashboard" | "space" | "inbox" | "calendar", spaceId?: number) => {
+  const handleViewChange = (view: "dashboard" | "space" | "inbox" | "calendar" | "echo", spaceId?: number) => {
     setActiveView(view);
     if (spaceId !== undefined) {
       setActiveSpaceId(spaceId);
@@ -87,7 +88,7 @@ export default function Home() {
     <div className="h-screen w-full flex bg-gray-100 dark:bg-black">
       {/* Sidebar */}
       <Sidebar
-        activeView={activeView === "settings" ? "dashboard" : activeView}
+        activeView={activeView === "settings" ? "dashboard" : activeView as "dashboard" | "space" | "inbox" | "calendar" | "echo"}
         activeSpaceId={activeSpaceId}
         onViewChange={handleViewChange}
         inboxUnreadCount={inboxUnreadCount}
@@ -112,6 +113,8 @@ export default function Home() {
           <Calendar />
         ) : activeView === "settings" ? (
           <ProfileSettings />
+        ) : activeView === "echo" ? (
+          <EchoPage />
         ) : (
           <SpaceView
             spaceId={activeSpaceId || 1}

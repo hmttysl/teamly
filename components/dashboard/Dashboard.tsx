@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useMemo } from "react";
-import { ChevronLeft, ChevronRight, TrendingUp, CheckCircle2, ListTodo, CalendarClock, Target, X, History, Sparkles, Plus, Flame, LineChart as ChartIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, TrendingUp, CheckCircle2, ListTodo, CalendarClock, Target, X, History, Sparkles, Plus, Flame, LineChart as ChartIcon, Zap } from "lucide-react";
 import { DashboardTaskCard } from "./DashboardTaskCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { currentUser, spaces } from "@/lib/mock-data";
 import { useTasks } from "@/lib/use-tasks";
 import { useActivity } from "@/lib/use-activity";
 import { addTask as addTaskToStore } from "@/lib/task-store";
+import { useEcho } from "@/lib/use-echo";
 
 // Currently online users (simulated)
 const onlineUsers = ["John Doe", "Sarah Jenkins", "Alex Riviera"];
@@ -40,12 +41,13 @@ function getDayName(date: Date): string {
 export function Dashboard() {
   const { kanban } = useTasks();
   const { activities, formatTimeAgo, getActionText, allActivities, addActivity } = useActivity(4);
+  const { addTask: addEchoTask, completedTasks: echoCompletedTasks, activeTasks: echoActiveTasks, getCompletedThisWeek: getEchoCompletedThisWeek } = useEcho();
   const [selectedTask, setSelectedTask] = useState<any | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [selectedSpaceId, setSelectedSpaceId] = useState(spaces[0]?.id || 1);
+  const [selectedSpaceId, setSelectedSpaceId] = useState<number | "echo">(spaces[0]?.id || 1);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const greeting = getGreeting();
 
@@ -76,9 +78,10 @@ export function Dashboard() {
     }));
   }, [userTasks]);
 
-  // Calculate dynamic stats
+  // Calculate dynamic stats (including Echo tasks)
   const stats = useMemo(() => {
-    const totalTasks = userTasks.length;
+    // Total includes both kanban and echo tasks
+    const totalTasks = userTasks.length + echoActiveTasks.length + echoCompletedTasks.length;
     
     // Count by status
     const inProgressCount = kanban.inProgress.filter(task => {
@@ -102,20 +105,20 @@ export function Dashboard() {
       return task.assignee?.name === currentUser.name;
     }).length;
 
-    // Upcoming = todo + review
-    const upcomingCount = todoCount + reviewCount;
+    // Upcoming = todo + review + echo active tasks
+    const upcomingCount = todoCount + reviewCount + echoActiveTasks.length;
 
     return {
       total: totalTasks,
       inProgress: inProgressCount,
       upcoming: upcomingCount,
     };
-  }, [kanban, userTasks]);
+  }, [kanban, userTasks, echoActiveTasks, echoCompletedTasks]);
 
-  // Get completed tasks assigned to current user this week
+  // Get completed tasks assigned to current user this week (including Echo)
   const userCompletedThisWeek = useMemo(() => {
     const startOfWeek = getStartOfWeek();
-    return kanban.done.filter(task => {
+    const kanbanCompleted = kanban.done.filter(task => {
       // Check if user is assigned
       const isUserAssigned = task.assignees && task.assignees.length > 0
         ? task.assignees.some(a => a.name === currentUser.name)
@@ -128,7 +131,12 @@ export function Dashboard() {
       const completedDate = new Date(task.completedAt);
       return completedDate >= startOfWeek;
     }).length;
-  }, [kanban.done]);
+    
+    // Add Echo completed this week
+    const echoCompleted = getEchoCompletedThisWeek();
+    
+    return kanbanCompleted + echoCompleted;
+  }, [kanban.done, getEchoCompletedThisWeek]);
 
   // Calculate weekly progress percentage
   const weeklyProgress = useMemo(() => {
@@ -681,12 +689,37 @@ export function Dashboard() {
 
             {/* Modal Body */}
             <div className="p-6 space-y-4">
-              {/* Space Selector */}
+              {/* Destination Selector */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Space
+                  Destination
                 </label>
                 <div className="grid grid-cols-1 gap-2">
+                  {/* Echo Option */}
+                  <button
+                    onClick={() => setSelectedSpaceId("echo")}
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                      selectedSpaceId === "echo"
+                        ? "border-[#6B2FD9] bg-[#6B2FD9]/10 dark:bg-[#6B2FD9]/40"
+                        : "border-gray-200 dark:border-zinc-700 hover:border-gray-300 dark:hover:border-zinc-600"
+                    }`}
+                  >
+                    <div className="w-6 h-6 rounded-full bg-[#6B2FD9]/20 flex items-center justify-center">
+                      <Zap className="w-3 h-3 text-[#6B2FD9]" />
+                    </div>
+                    <span className={`text-sm font-medium ${
+                      selectedSpaceId === "echo" 
+                        ? "text-[#6B2FD9] dark:text-[#a78bfa]" 
+                        : "text-gray-700 dark:text-gray-300"
+                    }`}>
+                      Echo Tasks
+                    </span>
+                    {selectedSpaceId === "echo" && (
+                      <CheckCircle2 className="w-4 h-4 text-[#6B2FD9] dark:text-[#a78bfa] ml-auto" />
+                    )}
+                  </button>
+                  
+                  {/* Spaces */}
                   {spaces.map((space) => (
                     <button
                       key={space.id}
@@ -724,25 +757,32 @@ export function Dashboard() {
                   onChange={(e) => setNewTaskTitle(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && newTaskTitle.trim()) {
-                      const selectedSpace = spaces.find(s => s.id === selectedSpaceId) || spaces[0];
-                      addTaskToStore(selectedSpaceId, "todo", {
-                        title: newTaskTitle.trim(),
-                        description: "",
-                        assignee: {
-                          name: currentUser.name,
-                          avatar: currentUser.avatar,
-                          initials: currentUser.initials,
-                        },
-                        assignees: [{
-                          name: currentUser.name,
-                          avatar: currentUser.avatar,
-                          initials: currentUser.initials,
-                        }],
-                        dueDate: new Date().toISOString(),
-                        createdAt: new Date().toISOString(),
-                        space: { name: selectedSpace.name, color: selectedSpace.color },
-                      });
-                      addActivity("create", newTaskTitle.trim(), { spaceId: selectedSpaceId, spaceName: selectedSpace.name });
+                      if (selectedSpaceId === "echo") {
+                        // Add to Echo
+                        addEchoTask(newTaskTitle.trim());
+                        addActivity("create", newTaskTitle.trim(), { spaceId: 0, spaceName: "Echo Tasks" });
+                      } else {
+                        // Add to Space
+                        const selectedSpace = spaces.find(s => s.id === selectedSpaceId) || spaces[0];
+                        addTaskToStore(selectedSpaceId as number, "todo", {
+                          title: newTaskTitle.trim(),
+                          description: "",
+                          assignee: {
+                            name: currentUser.name,
+                            avatar: currentUser.avatar,
+                            initials: currentUser.initials,
+                          },
+                          assignees: [{
+                            name: currentUser.name,
+                            avatar: currentUser.avatar,
+                            initials: currentUser.initials,
+                          }],
+                          dueDate: new Date().toISOString(),
+                          createdAt: new Date().toISOString(),
+                          space: { name: selectedSpace.name, color: selectedSpace.color },
+                        });
+                        addActivity("create", newTaskTitle.trim(), { spaceId: selectedSpaceId as number, spaceName: selectedSpace.name });
+                      }
                       setNewTaskTitle("");
                       setShowCreateTaskModal(false);
                     }
@@ -752,7 +792,9 @@ export function Dashboard() {
                 />
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Task will be added to the To Do column of the selected space.
+                {selectedSpaceId === "echo" 
+                  ? "Task will be added to Echo Tasks."
+                  : "Task will be added to the To Do column of the selected space."}
               </p>
             </div>
 
@@ -773,25 +815,32 @@ export function Dashboard() {
                 disabled={!newTaskTitle.trim()}
                 onClick={() => {
                   if (newTaskTitle.trim()) {
-                    const selectedSpace = spaces.find(s => s.id === selectedSpaceId) || spaces[0];
-                    addTaskToStore(selectedSpaceId, "todo", {
-                      title: newTaskTitle.trim(),
-                      description: "",
-                      assignee: {
-                        name: currentUser.name,
-                        avatar: currentUser.avatar,
-                        initials: currentUser.initials,
-                      },
-                      assignees: [{
-                        name: currentUser.name,
-                        avatar: currentUser.avatar,
-                        initials: currentUser.initials,
-                      }],
-                      dueDate: new Date().toISOString(),
-                      createdAt: new Date().toISOString(),
-                      space: { name: selectedSpace.name, color: selectedSpace.color },
-                    });
-                    addActivity("create", newTaskTitle.trim(), { spaceId: selectedSpaceId, spaceName: selectedSpace.name });
+                    if (selectedSpaceId === "echo") {
+                      // Add to Echo
+                      addEchoTask(newTaskTitle.trim());
+                      addActivity("create", newTaskTitle.trim(), { spaceId: 0, spaceName: "Echo Tasks" });
+                    } else {
+                      // Add to Space
+                      const selectedSpace = spaces.find(s => s.id === selectedSpaceId) || spaces[0];
+                      addTaskToStore(selectedSpaceId as number, "todo", {
+                        title: newTaskTitle.trim(),
+                        description: "",
+                        assignee: {
+                          name: currentUser.name,
+                          avatar: currentUser.avatar,
+                          initials: currentUser.initials,
+                        },
+                        assignees: [{
+                          name: currentUser.name,
+                          avatar: currentUser.avatar,
+                          initials: currentUser.initials,
+                        }],
+                        dueDate: new Date().toISOString(),
+                        createdAt: new Date().toISOString(),
+                        space: { name: selectedSpace.name, color: selectedSpace.color },
+                      });
+                      addActivity("create", newTaskTitle.trim(), { spaceId: selectedSpaceId as number, spaceName: selectedSpace.name });
+                    }
                     setNewTaskTitle("");
                     setShowCreateTaskModal(false);
                   }

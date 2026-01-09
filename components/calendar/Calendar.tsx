@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Search, Calendar as CalendarIcon, ExternalLink, Clock, Users, FileText, X, CheckCircle2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Calendar as CalendarIcon, ExternalLink, Clock, Users, FileText, X, CheckCircle2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { currentUser } from "@/lib/mock-data";
 import { useTasks, type Task } from "@/lib/use-tasks";
+import { useEcho, type EchoTask } from "@/lib/use-echo";
 
 // Time slots for the calendar
 const timeSlots = [
@@ -16,8 +17,9 @@ const timeSlots = [
 
 export function Calendar() {
   const { kanban } = useTasks();
+  const { tasks: echoTasks } = useEcho();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | EchoTask | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Combine all tasks from kanban and filter for current user
@@ -53,9 +55,19 @@ export function Calendar() {
     return days;
   }, [currentDate]);
 
+  // Get Echo tasks with due dates
+  const echoTasksWithDates = useMemo(() => {
+    return echoTasks.filter(task => task.dueDate).map(task => ({
+      ...task,
+      isEcho: true as const,
+      space: { name: "Echo", color: "bg-[#6B2FD9]" },
+      assignees: [{ name: currentUser.name, avatar: currentUser.avatar, initials: currentUser.initials }],
+    }));
+  }, [echoTasks]);
+
   // Get tasks for a specific day (filtered by search if any)
   const getTasksForDay = (date: Date) => {
-    return userTasks.filter(task => {
+    const regularTasks = userTasks.filter(task => {
       const taskDate = new Date(task.dueDate);
       const matchesDate = (
         taskDate.getDate() === date.getDate() &&
@@ -72,12 +84,33 @@ export function Calendar() {
       
       return true;
     });
+
+    // Add Echo tasks for this day
+    const echoForDay = echoTasksWithDates.filter(task => {
+      if (!task.dueDate) return false;
+      const taskDate = new Date(task.dueDate);
+      const matchesDate = (
+        taskDate.getDate() === date.getDate() &&
+        taskDate.getMonth() === date.getMonth() &&
+        taskDate.getFullYear() === date.getFullYear()
+      );
+      
+      if (!matchesDate) return false;
+      
+      if (searchQuery) {
+        return task.title.toLowerCase().includes(searchQuery.toLowerCase());
+      }
+      
+      return true;
+    });
+
+    return [...regularTasks, ...echoForDay];
   };
 
-  // Get today's tasks for the header
+  // Get today's tasks for the header (including Echo tasks)
   const todaysTasks = useMemo(() => {
     const today = new Date();
-    return userTasks.filter(task => {
+    const regularTodaysTasks = userTasks.filter(task => {
       const taskDate = new Date(task.dueDate);
       return (
         taskDate.getDate() === today.getDate() &&
@@ -85,7 +118,19 @@ export function Calendar() {
         taskDate.getFullYear() === today.getFullYear()
       );
     });
-  }, [userTasks]);
+    
+    const echoTodaysTasks = echoTasksWithDates.filter(task => {
+      if (!task.dueDate) return false;
+      const taskDate = new Date(task.dueDate);
+      return (
+        taskDate.getDate() === today.getDate() &&
+        taskDate.getMonth() === today.getMonth() &&
+        taskDate.getFullYear() === today.getFullYear()
+      );
+    });
+    
+    return [...regularTodaysTasks, ...echoTodaysTasks];
+  }, [userTasks, echoTasksWithDates]);
 
   const handlePrevWeek = () => {
     const newDate = new Date(currentDate);

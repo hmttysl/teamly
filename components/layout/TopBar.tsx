@@ -9,7 +9,7 @@ import { ProfileMenu } from "@/components/layout/ProfileMenu";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface TopBarProps {
-  activeView: "dashboard" | "space" | "inbox" | "calendar" | "settings";
+  activeView: "dashboard" | "space" | "inbox" | "calendar" | "settings" | "echo";
   onProfileSettingsClick: () => void;
 }
 

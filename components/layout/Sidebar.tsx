@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutGrid, Plus, Inbox, Calendar } from "lucide-react";
+import { LayoutGrid, Plus, Inbox, Calendar, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreateSpaceDialog } from "@/components/dialogs/CreateSpaceDialog";
 import { currentUser } from "@/lib/mock-data";
@@ -12,9 +12,9 @@ interface Space {
 }
 
 interface SidebarProps {
-  activeView: "dashboard" | "space" | "inbox" | "calendar";
+  activeView: "dashboard" | "space" | "inbox" | "calendar" | "echo";
   activeSpaceId?: number;
-  onViewChange: (view: "dashboard" | "space" | "inbox" | "calendar", spaceId?: number) => void;
+  onViewChange: (view: "dashboard" | "space" | "inbox" | "calendar" | "echo", spaceId?: number) => void;
   inboxUnreadCount?: number;
   spaces: Space[];
   onCreateSpace?: (name: string, color: string) => void;
@@ -38,6 +38,13 @@ export function Sidebar({ activeView, activeSpaceId, onViewChange, inboxUnreadCo
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1">
+        {/* Main Section */}
+        <div className="mb-3">
+          <span className="px-3 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+            Main
+          </span>
+        </div>
+
         <Button
           variant="ghost"
           className={`w-full justify-start gap-3 ${
@@ -67,6 +74,19 @@ export function Sidebar({ activeView, activeSpaceId, onViewChange, inboxUnreadCo
               {inboxUnreadCount}
             </span>
           )}
+        </Button>
+
+        <Button
+          variant="ghost"
+          className={`w-full justify-start gap-3 ${
+            activeView === "echo"
+              ? "bg-[#6B2FD9]/10 dark:bg-[#6B2FD9]/20 text-[#6B2FD9] hover:bg-[#6B2FD9]/20 dark:hover:bg-[#6B2FD9]/30"
+              : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+          }`}
+          onClick={() => onViewChange("echo")}
+        >
+          <Zap className="w-4 h-4" />
+          Echo
         </Button>
 
         <Button

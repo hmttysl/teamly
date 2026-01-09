@@ -214,8 +214,20 @@
   100% { opacity: 0.3; transform: scale(0.8); }
 }
 
-.animate-sparkle { animation: sparkle-pulse 3s infinite ease-in-out; }
-.animate-orbit-slow { animation: orbit 12s infinite linear; }
-.animate-orbit-fast { animation: orbit 8s infinite linear reverse; }
-.animate-float { animation: float 5s infinite ease-in-out; }
-.animate-shimmer { animation: shimmer 2s infinite ease-in-out; }
+@layer utilities {
+  .animate-sparkle { 
+    animation: sparkle-pulse 3s infinite ease-in-out; 
+  }
+  .animate-orbit-slow { 
+    animation: orbit 12s infinite linear; 
+  }
+  .animate-orbit-fast { 
+    animation: orbit 8s infinite linear reverse; 
+  }
+  .animate-float { 
+    animation: float 5s infinite ease-in-out; 
+  }
+  .animate-shimmer { 
+    animation: shimmer 2s infinite ease-in-out; 
+  }
+}
