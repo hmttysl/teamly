@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Plus, GripVertical, MoreHorizontal, Trash2, Pencil, X, Calendar, Check } from "lucide-react";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { Button } from "@/components/ui/button";
@@ -14,26 +14,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSpaceTasks, type Task, type KanbanColumn } from "@/lib/use-tasks";
-import { currentUser, spaceMembers, spaces } from "@/lib/mock-data";
+import { spaces } from "@/lib/mock-data";
 import { useActivity } from "@/lib/use-activity";
-
-// All available members for assignment
-const allMembers = [
-  {
-    id: 0,
-    name: currentUser.name,
-    avatar: currentUser.avatar,
-    initials: currentUser.initials,
-    email: currentUser.email,
-  },
-  ...spaceMembers.map(m => ({
-    id: m.id,
-    name: m.name,
-    avatar: m.avatar,
-    initials: m.initials,
-    email: m.email,
-  })),
-];
+import { useAuth } from "@/lib/auth-context";
+import { useLanguage } from "@/lib/language-context";
 
 interface ColumnProps {
   id: KanbanColumn;
@@ -199,6 +183,23 @@ interface KanbanBoardProps {
 export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-purple-500" }: KanbanBoardProps) {
   const { kanban, moveTask, addTask, deleteTask } = useSpaceTasks(spaceId);
   const { addActivity } = useActivity();
+  const { user, profile } = useAuth();
+  const { t } = useLanguage();
+  
+  // Current user info from auth
+  const currentUser = useMemo(() => ({
+    id: 0,
+    name: profile?.name || user?.email?.split('@')[0] || "User",
+    avatar: profile?.avatar_url || "",
+    initials: (profile?.name || user?.email?.split('@')[0] || "U").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2),
+    email: user?.email || "",
+  }), [user, profile]);
+  
+  // All available members for assignment (just current user for now)
+  const allMembers = useMemo(() => [currentUser], [currentUser]);
+  
+  // Space members (excluding current user) - empty for now, will be fetched from Supabase later
+  const spaceMembers: typeof allMembers = [];
   
   // Get space info
   const spaceInfo = spaces.find(s => s.id === spaceId) || { name: spaceName || "Space", color: spaceColor };
@@ -213,14 +214,14 @@ export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-purple-500" }
   const [newTaskDueDate, setNewTaskDueDate] = useState("");
   const [newTaskDueTime, setNewTaskDueTime] = useState("");
   const [isAllDay, setIsAllDay] = useState(false);
-  const [selectedAssignees, setSelectedAssignees] = useState<typeof allMembers>([]);
+  const [selectedAssignees, setSelectedAssignees] = useState<{id: number; name: string; avatar: string; initials: string; email: string}[]>([]);
   const [assignSelf, setAssignSelf] = useState(true);
 
   const [columnTitles, setColumnTitles] = useState({
-    todo: "To Do",
-    inProgress: "In Progress",
-    review: "Review",
-    done: "Done",
+    todo: t.todo,
+    inProgress: t.inProgress,
+    review: t.review,
+    done: t.done,
   });
   const [editingColumn, setEditingColumn] = useState<KanbanColumn | null>(null);
   const [editingTitleValue, setEditingTitleValue] = useState("");
@@ -246,10 +247,10 @@ export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-purple-500" }
   };
 
   const columnNames: Record<KanbanColumn, string> = {
-    todo: "To Do",
-    inProgress: "In Progress",
-    review: "Review",
-    done: "Done",
+    todo: t.todo,
+    inProgress: t.inProgress,
+    review: t.review,
+    done: t.done,
   };
 
   const handleDrop = (e: React.DragEvent, targetColumn: KanbanColumn) => {
@@ -599,7 +600,7 @@ export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-purple-500" }
               {/* Other Assignees */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Add Team Members
+                  {t.addTeamMembers}
                 </label>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {spaceMembers.map((member) => {

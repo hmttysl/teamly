@@ -1,8 +1,6 @@
 // Centralized task store for Teamly
 // Tasks are organized by spaceId - each space has its own kanban board
 
-import { currentUser } from "./mock-data";
-
 export interface Task {
   id: number;
   title: string;

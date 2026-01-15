@@ -15,6 +15,7 @@ import { supabase } from "@/lib/supabase";
 
 interface Space {
   id: number;
+  dbId?: string; // UUID from Supabase
   name: string;
   color: string;
 }
@@ -78,7 +79,12 @@ export default function Home() {
   };
 
   const handleCreateSpace = async (name: string, color: string) => {
-    if (!user) return;
+    if (!user) {
+      console.error("No user logged in");
+      return;
+    }
+
+    console.log("Creating space:", { name, color, userId: user.id });
 
     const { data, error } = await supabase
       .from("spaces")
@@ -95,9 +101,11 @@ export default function Home() {
       return;
     }
 
+    console.log("Space created:", data);
+
     if (data) {
       // Also add the owner as a member
-      await supabase
+      const { error: memberError } = await supabase
         .from("space_members")
         .insert({
           space_id: data.id,
@@ -105,13 +113,29 @@ export default function Home() {
           role: "owner",
         });
 
-      // Refresh spaces
-      await fetchSpaces();
+      if (memberError) {
+        console.error("Error adding member:", memberError);
+      }
+
+      // Add the new space to state directly
+      const newSpaceId = spaces.length > 0 ? Math.max(...spaces.map(s => s.id)) + 1 : 1;
+      const newSpace = {
+        id: newSpaceId,
+        dbId: data.id,
+        name: data.name,
+        color: data.color,
+      };
+      
+      console.log("Adding to state:", newSpace);
+      setSpaces(prev => {
+        const updated = [...prev, newSpace];
+        console.log("Updated spaces:", updated);
+        return updated;
+      });
       
       // Navigate to the new space
-      const newSpaceIndex = spaces.length + 1;
       setActiveView("space");
-      setActiveSpaceId(newSpaceIndex);
+      setActiveSpaceId(newSpaceId);
     }
   };
 
@@ -125,13 +149,16 @@ export default function Home() {
 
   const handleDeleteSpace = async (spaceId: number) => {
     const spaceToDelete = spaces.find(s => s.id === spaceId);
-    if (!spaceToDelete || !user) return;
+    if (!spaceToDelete || !user || !spaceToDelete.dbId) {
+      console.error("Cannot delete space: space not found or no dbId");
+      return;
+    }
 
     // Delete from Supabase
     const { error } = await supabase
       .from("spaces")
       .delete()
-      .eq("id", (spaceToDelete as any).dbId);
+      .eq("id", spaceToDelete.dbId);
 
     if (error) {
       console.error("Error deleting space:", error);
@@ -155,16 +182,18 @@ export default function Home() {
 
   const handleUpdateSpace = async (spaceId: number, updates: { name?: string; description?: string; color?: string }) => {
     const spaceToUpdate = spaces.find(s => s.id === spaceId);
-    if (!spaceToUpdate) return;
+    if (!spaceToUpdate || !spaceToUpdate.dbId) return;
+
+    const updateData: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.color !== undefined) updateData.color = updates.color;
 
     const { error } = await supabase
       .from("spaces")
-      .update({
-        name: updates.name,
-        color: updates.color,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", (spaceToUpdate as any).dbId);
+      .update(updateData)
+      .eq("id", spaceToUpdate.dbId);
 
     if (error) {
       console.error("Error updating space:", error);
@@ -172,7 +201,7 @@ export default function Home() {
     }
 
     // Update local state
-    setSpaces(spaces.map(s => {
+    setSpaces(prev => prev.map(s => {
       if (s.id === spaceId) {
         return {
           ...s,
@@ -242,6 +271,7 @@ export default function Home() {
         ) : (
           <SpaceView
             spaceId={activeSpaceId || 1}
+            spaceDbId={activeSpace?.dbId}
             spaceName={activeSpace?.name || ""}
             spaceColor={activeSpace?.color || "bg-purple-500"}
             onLeaveSpace={handleLeaveSpace}

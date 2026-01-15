@@ -1,10 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { activityStore, Activity } from "./activity-store";
-import { currentUser } from "./mock-data";
+import { useAuth } from "./auth-context";
 
 export function useActivity(limit?: number) {
+  const { user, profile } = useAuth();
+  
+  // Current user from auth
+  const currentUser = useMemo(() => ({
+    name: profile?.name || user?.email?.split('@')[0] || "User",
+    avatar: profile?.avatar_url || "",
+  }), [user, profile]);
+
   const [activities, setActivities] = useState<Activity[]>(() => 
     activityStore.getActivities(limit)
   );
@@ -36,7 +44,7 @@ export function useActivity(limit?: number) {
       taskTitle,
       ...options,
     });
-  }, []);
+  }, [currentUser.name, currentUser.avatar]);
 
   const formatTimeAgo = useCallback((date: Date) => {
     return activityStore.formatTimeAgo(date);

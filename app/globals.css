@@ -230,4 +230,30 @@
   .animate-shimmer { 
     animation: shimmer 2s infinite ease-in-out; 
   }
+  
+  /* Holographic Gradient Colors */
+  .gradient-purple {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  }
+  .gradient-pink {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 50%, #ff6b6b 100%);
+  }
+  .gradient-blue {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 50%, #43e97b 100%);
+  }
+  .gradient-cyan {
+    background: linear-gradient(135deg, #89f7fe 0%, #66a6ff 50%, #667eea 100%);
+  }
+  .gradient-orange {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 50%, #ffb347 100%);
+  }
+  .gradient-green {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 50%, #a8e063 100%);
+  }
+  .gradient-indigo {
+    background: linear-gradient(135deg, #5f72bd 0%, #9b23ea 50%, #667eea 100%);
+  }
+  .gradient-rose {
+    background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 50%, #f093fb 100%);
+  }
 }

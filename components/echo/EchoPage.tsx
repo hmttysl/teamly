@@ -10,24 +10,22 @@ import {
 } from 'lucide-react';
 import EchoTodoList from './EchoTodoList';
 import { useEcho } from '@/lib/use-echo';
+import { useLanguage } from '@/lib/language-context';
 
 const PRESET_COLORS = [
-  'bg-indigo-500',
   'bg-purple-500',
-  'bg-emerald-500',
-  'bg-rose-500',
-  'bg-blue-500',
-  'bg-orange-500',
   'bg-pink-500',
+  'bg-blue-500',
   'bg-cyan-500',
-  'bg-yellow-500',
-  'bg-amber-500',
-  'bg-lime-500',
-  'bg-fuchsia-500'
+  'bg-orange-500',
+  'bg-green-500',
+  'bg-indigo-500',
+  'bg-rose-500',
 ];
 
 const EchoPage: React.FC = () => {
   const { categories, addCategory } = useEcho();
+  const { t } = useLanguage();
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
@@ -48,10 +46,10 @@ const EchoPage: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 pt-8">
         <div>
           <div className="flex items-center gap-3 mb-4">
-            <span className="bg-[#6B2FD9]/20 text-[#6B2FD9] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide border border-[#6B2FD9]/20">Workspace</span>
+            <span className="bg-[#6B2FD9]/20 text-[#6B2FD9] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide border border-[#6B2FD9]/20">{t.workspace}</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tighter leading-none">Echo Tasks</h1>
-          <p className="text-gray-500 dark:text-zinc-500 mt-3 text-base font-medium max-w-2xl leading-relaxed">Where your Echo room turns into action.</p>
+          <h1 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tighter leading-none">{t.echoTasksTitle}</h1>
+          <p className="text-gray-500 dark:text-zinc-500 mt-3 text-base font-medium max-w-2xl leading-relaxed">{t.echoDescription}</p>
         </div>
 
         <div className="flex items-center gap-4 relative">
@@ -65,7 +63,7 @@ const EchoPage: React.FC = () => {
               }`}
             >
               <Filter size={20} />
-              <span>{activeFilter === 'all' ? 'Filter' : categories.find(c => c.id === activeFilter)?.name}</span>
+              <span>{activeFilter === 'all' ? t.filter : categories.find(c => c.id === activeFilter)?.name}</span>
             </button>
 
             {showFilterMenu && (
@@ -81,7 +79,7 @@ const EchoPage: React.FC = () => {
                     onClick={() => { setActiveFilter('all'); setShowFilterMenu(false); }}
                     className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${activeFilter === 'all' ? 'bg-[#6B2FD9]/10 dark:bg-[#6B2FD9]/20 text-[#6B2FD9]' : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800/50'}`}
                   >
-                    All Tasks
+                    {t.allTasks}
                   </button>
                   {categories.map(cat => (
                     <button 
@@ -103,7 +101,7 @@ const EchoPage: React.FC = () => {
             className="flex items-center gap-2 px-5 py-3 bg-[#6B2FD9] text-white rounded-xl text-sm font-bold hover:bg-[#5a27b8] transition-all shadow-lg active:scale-95"
           >
             <Tag size={18} />
-            <span className="hidden sm:inline">New Category</span>
+            <span className="hidden sm:inline">{t.newCategory}</span>
           </button>
         </div>
       </div>
@@ -113,7 +111,7 @@ const EchoPage: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in-95 duration-300">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Create Category</h3>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">{t.createLabel}</h3>
               <button onClick={() => setShowAddCategory(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors">
                 <X size={20} />
               </button>
@@ -121,7 +119,7 @@ const EchoPage: React.FC = () => {
             
             <div className="space-y-6">
               <div>
-                <label className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wide mb-2 block">Category Name</label>
+                <label className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wide mb-2 block">{t.labelName}</label>
                 <input 
                   autoFocus
                   type="text" 
@@ -134,15 +132,24 @@ const EchoPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wide mb-3 block">Color</label>
-                <div className="grid grid-cols-6 gap-2">
+                <label className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wide mb-3 block">{t.color}</label>
+                <div className="grid grid-cols-4 gap-3">
                   {PRESET_COLORS.map((color) => (
                     <button
                       key={color}
                       onClick={() => setSelectedColor(color)}
-                      className={`w-full aspect-square rounded-lg transition-all relative flex items-center justify-center hover:scale-110 active:scale-90 ${color} ${selectedColor === color ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900 ring-[#6B2FD9]' : 'opacity-50 hover:opacity-100'}`}
+                      className={`relative w-9 h-9 rounded-full transition-all duration-300 hover:scale-110 active:scale-90 ${
+                        selectedColor === color 
+                          ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900 ring-[#6B2FD9]' 
+                          : 'opacity-70 hover:opacity-100'
+                      }`}
                     >
-                      {selectedColor === color && <Check size={14} className="text-white" strokeWidth={3} />}
+                      {/* Subtle glow effect */}
+                      <div className={`absolute inset-0 rounded-full ${color} blur-sm opacity-40`} />
+                      {/* Main color circle */}
+                      <div className={`absolute inset-0.5 rounded-full ${color} flex items-center justify-center`}>
+                        {selectedColor === color && <Check size={12} className="text-white" strokeWidth={3} />}
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -153,7 +160,7 @@ const EchoPage: React.FC = () => {
                 disabled={!newCatName.trim()}
                 className="w-full py-3 bg-[#6B2FD9] text-white rounded-xl font-semibold hover:bg-[#5a27b8] transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.98]"
               >
-                Create Category
+                {t.confirm}
               </button>
             </div>
           </div>

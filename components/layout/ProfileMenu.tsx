@@ -9,6 +9,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useAuth } from "@/lib/auth-context";
+import { useLanguage } from "@/lib/language-context";
 
 interface ProfileMenuProps {
   onProfileSettingsClick: () => void;
@@ -16,6 +17,7 @@ interface ProfileMenuProps {
 
 export function ProfileMenu({ onProfileSettingsClick }: ProfileMenuProps) {
   const { profile, user, signOut } = useAuth();
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
 
   // Get user display info from auth context
@@ -68,14 +70,14 @@ export function ProfileMenu({ onProfileSettingsClick }: ProfileMenuProps) {
             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors"
           >
             <User className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-            Profile Settings
+            {t.profileSettings}
           </button>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
           >
             <LogOut className="w-4 h-4" />
-            Log out
+            {t.logOut}
           </button>
         </div>
       </PopoverContent>

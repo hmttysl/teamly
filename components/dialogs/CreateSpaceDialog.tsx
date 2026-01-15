@@ -12,16 +12,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useLanguage } from "@/lib/language-context";
 
 const spaceColors = [
   { name: "Purple", class: "bg-purple-500" },
-  { name: "Red", class: "bg-red-500" },
   { name: "Pink", class: "bg-pink-500" },
   { name: "Blue", class: "bg-blue-500" },
-  { name: "Green", class: "bg-green-500" },
-  { name: "Yellow", class: "bg-yellow-500" },
-  { name: "Orange", class: "bg-orange-500" },
   { name: "Cyan", class: "bg-cyan-500" },
+  { name: "Orange", class: "bg-orange-500" },
+  { name: "Green", class: "bg-green-500" },
+  { name: "Indigo", class: "bg-indigo-500" },
+  { name: "Rose", class: "bg-rose-500" },
 ];
 
 interface CreateSpaceDialogProps {
@@ -30,6 +31,7 @@ interface CreateSpaceDialogProps {
 }
 
 export function CreateSpaceDialog({ children, onCreateSpace }: CreateSpaceDialogProps) {
+  const { t } = useLanguage();
   const [spaceName, setSpaceName] = useState("");
   const [selectedColor, setSelectedColor] = useState("bg-purple-500");
   const [open, setOpen] = useState(false);
@@ -55,9 +57,9 @@ export function CreateSpaceDialog({ children, onCreateSpace }: CreateSpaceDialog
               <FolderPlus className="w-5 h-5 text-[#6B2FD9]" />
             </div>
             <div>
-              <DialogTitle>Create New Space</DialogTitle>
+              <DialogTitle>{t.createNewSpace}</DialogTitle>
               <DialogDescription>
-                Add a new space to organize your tasks
+                {t.createNewSpaceDesc}
               </DialogDescription>
             </div>
           </div>
@@ -67,10 +69,10 @@ export function CreateSpaceDialog({ children, onCreateSpace }: CreateSpaceDialog
           {/* Space Name */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Space Name
+              {t.spaceName}
             </label>
             <Input
-              placeholder="Enter space name..."
+              placeholder={t.spaceNamePlaceholder}
               value={spaceName}
               onChange={(e) => setSpaceName(e.target.value)}
               onKeyDown={(e) => {
@@ -85,20 +87,25 @@ export function CreateSpaceDialog({ children, onCreateSpace }: CreateSpaceDialog
           {/* Color Selection */}
           <div className="space-y-3">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Space Color
+              {t.color}
             </label>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-3 flex-wrap">
               {spaceColors.map((color) => (
                 <button
                   key={color.class}
                   onClick={() => setSelectedColor(color.class)}
-                  className={`w-8 h-8 rounded-lg ${color.class} transition-all hover:scale-110 ${
+                  className={`relative w-9 h-9 rounded-full transition-all duration-300 hover:scale-110 ${
                     selectedColor === color.class
-                      ? "ring-2 ring-offset-2 ring-[#6B2FD9] dark:ring-offset-black"
+                      ? "ring-2 ring-offset-2 ring-[#6B2FD9] dark:ring-offset-zinc-900"
                       : ""
                   }`}
                   title={color.name}
-                />
+                >
+                  {/* Subtle glow effect */}
+                  <div className={`absolute inset-0 rounded-full ${color.class} blur-sm opacity-40`} />
+                  {/* Main color circle */}
+                  <div className={`absolute inset-0.5 rounded-full ${color.class}`} />
+                </button>
               ))}
             </div>
           </div>
@@ -106,12 +113,12 @@ export function CreateSpaceDialog({ children, onCreateSpace }: CreateSpaceDialog
           {/* Preview */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Preview
+              {t.preview}
             </label>
             <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-zinc-900 rounded-lg border border-gray-200 dark:border-zinc-800">
               <div className={`w-3 h-3 rounded-full ${selectedColor}`}></div>
               <span className="text-sm font-medium text-gray-900 dark:text-white">
-                {spaceName || "Space name"}
+                {spaceName || t.spaceNamePlaceholder}
               </span>
             </div>
           </div>
@@ -123,14 +130,14 @@ export function CreateSpaceDialog({ children, onCreateSpace }: CreateSpaceDialog
               className="flex-1"
               onClick={() => setOpen(false)}
             >
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               className="flex-1 bg-[#6B2FD9] hover:bg-[#5a27b8]"
               onClick={handleCreate}
               disabled={!spaceName.trim()}
             >
-              Create Space
+              {t.createSpace}
             </Button>
           </div>
         </div>

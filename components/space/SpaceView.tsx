@@ -4,9 +4,11 @@ import { useState } from "react";
 import { KanbanBoard } from "./KanbanBoard";
 import { SpaceMembers } from "./SpaceMembers";
 import { SpaceSettings } from "./SpaceSettings";
+import { useLanguage } from "@/lib/language-context";
 
 interface SpaceViewProps {
   spaceId: number;
+  spaceDbId?: string; // Supabase UUID
   spaceName: string;
   spaceColor?: string;
   onLeaveSpace?: (spaceId: number) => void;
@@ -19,6 +21,7 @@ type TabType = "board" | "members" | "settings";
 
 export function SpaceView({ 
   spaceId, 
+  spaceDbId,
   spaceName,
   spaceColor = "bg-purple-500",
   onLeaveSpace,
@@ -27,6 +30,7 @@ export function SpaceView({
   onUpdateSpace,
 }: SpaceViewProps) {
   const [activeTab, setActiveTab] = useState<TabType>("board");
+  const { t } = useLanguage();
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -41,7 +45,7 @@ export function SpaceView({
                 : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
             }`}
           >
-            Board
+            {t.board}
           </button>
           <button
             onClick={() => setActiveTab("members")}
@@ -51,7 +55,7 @@ export function SpaceView({
                 : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
             }`}
           >
-            Members
+            {t.members}
           </button>
           <button
             onClick={() => setActiveTab("settings")}
@@ -61,14 +65,14 @@ export function SpaceView({
                 : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
             }`}
           >
-            Settings
+            {t.settings}
           </button>
         </div>
       </div>
 
       {/* Tab Content */}
       {activeTab === "board" && <KanbanBoard spaceId={spaceId} spaceName={spaceName} spaceColor={spaceColor} />}
-      {activeTab === "members" && <SpaceMembers spaceName={spaceName} />}
+      {activeTab === "members" && <SpaceMembers spaceName={spaceName} spaceId={spaceDbId} />}
       {activeTab === "settings" && (
         <SpaceSettings 
           spaceName={spaceName} 

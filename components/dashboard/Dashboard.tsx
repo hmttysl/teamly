@@ -7,22 +7,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TaskDetailDrawer } from "@/components/tasks/TaskDetailDrawer";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { currentUser, spaces } from "@/lib/mock-data";
+import { spaces } from "@/lib/mock-data";
 import { useTasks } from "@/lib/use-tasks";
 import { useAuth } from "@/lib/auth-context";
 import { useActivity } from "@/lib/use-activity";
 import { addTask as addTaskToStore } from "@/lib/task-store";
 import { useEcho } from "@/lib/use-echo";
+import { useLanguage } from "@/lib/language-context";
 
 // Currently online users (simulated)
 const onlineUsers = ["John Doe", "Sarah Jenkins", "Alex Riviera"];
 
-// Get dynamic greeting based on time
-function getGreeting(): string {
+// Get greeting key based on time
+function getGreetingKey(): "morning" | "afternoon" | "evening" {
   const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
+  if (hour < 12) return "morning";
+  if (hour < 17) return "afternoon";
+  return "evening";
 }
 
 // Get the start of the current week (Sunday)
@@ -43,9 +44,47 @@ export function Dashboard() {
   const { profile, user } = useAuth();
   const { kanban } = useTasks();
   const { activities, formatTimeAgo, getActionText, allActivities, addActivity } = useActivity(4);
+  const { t } = useLanguage();
+  
+  // Helper to translate day names
+  const translateDay = (day: string): string => {
+    const dayMap: Record<string, string> = {
+      'Sunday': t.sunday,
+      'Monday': t.monday,
+      'Tuesday': t.tuesday,
+      'Wednesday': t.wednesday,
+      'Thursday': t.thursday,
+      'Friday': t.friday,
+      'Saturday': t.saturday,
+    };
+    return dayMap[day] || day;
+  };
+  
+  // Helper for short day names
+  const translateDayShort = (day: string): string => {
+    const dayMap: Record<string, string> = {
+      'Sunday': t.sun,
+      'Monday': t.mon,
+      'Tuesday': t.tue,
+      'Wednesday': t.wed,
+      'Thursday': t.thu,
+      'Friday': t.fri,
+      'Saturday': t.sat,
+    };
+    return dayMap[day] || day.substring(0, 3);
+  };
+  
+  // Current user object from auth
+  const currentUser = useMemo(() => ({
+    name: profile?.name || user?.email?.split('@')[0] || "User",
+    avatar: profile?.avatar_url || "",
+    initials: (profile?.name || user?.email?.split('@')[0] || "U").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2),
+    email: user?.email || "",
+  }), [user, profile]);
   
   // Get user's first name from auth context
   const userName = profile?.name?.split(' ')[0] || user?.email?.split('@')[0] || "there";
+  const greetingKey = getGreetingKey();
   const { addTask: addEchoTask, completedTasks: echoCompletedTasks, activeTasks: echoActiveTasks, getCompletedThisWeek: getEchoCompletedThisWeek } = useEcho();
   const [selectedTask, setSelectedTask] = useState<any | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -54,7 +93,6 @@ export function Dashboard() {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [selectedSpaceId, setSelectedSpaceId] = useState<number | "echo">(spaces.length > 0 ? spaces[0].id : "echo");
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const greeting = getGreeting();
 
   // Combine all tasks from kanban columns
   const allTasks = useMemo(() => {
@@ -72,7 +110,7 @@ export function Dashboard() {
       // Fallback to single assignee
       return task.assignee?.name === currentUser.name;
     });
-  }, [allTasks]);
+  }, [allTasks, currentUser.name]);
 
   // Prepare tasks for display (ensure they have required fields)
   const displayTasks = useMemo(() => {
@@ -118,7 +156,7 @@ export function Dashboard() {
       inProgress: inProgressCount,
       upcoming: upcomingCount,
     };
-  }, [kanban, userTasks, echoActiveTasks, echoCompletedTasks]);
+  }, [kanban, userTasks, echoActiveTasks, echoCompletedTasks, currentUser.name]);
 
   // Get completed tasks assigned to current user this week (including Echo)
   const userCompletedThisWeek = useMemo(() => {
@@ -141,7 +179,7 @@ export function Dashboard() {
     const echoCompleted = getEchoCompletedThisWeek();
     
     return kanbanCompleted + echoCompleted;
-  }, [kanban.done, getEchoCompletedThisWeek]);
+  }, [kanban.done, getEchoCompletedThisWeek, currentUser.name]);
 
   // Calculate weekly progress percentage
   const weeklyProgress = useMemo(() => {
@@ -177,9 +215,20 @@ export function Dashboard() {
       }
     });
 
+    // Add Echo completed tasks to the chart
+    echoCompletedTasks.forEach(task => {
+      if (task.completedAt) {
+        const completedDate = new Date(task.completedAt);
+        if (completedDate >= startOfWeek) {
+          const dayIndex = completedDate.getDay();
+          weekData[dayIndex].completed++;
+        }
+      }
+    });
+
     // Reorder to start from Monday
     return [...weekData.slice(1), weekData[0]];
-  }, [kanban.done]);
+  }, [kanban.done, echoCompletedTasks, currentUser.name]);
 
   // Find peak day
   const peakDay = useMemo(() => {
@@ -190,14 +239,15 @@ export function Dashboard() {
 
   // Generate insight text
   const getWeeklyInsight = () => {
-    if (peakDay.completed === 0) return "Start tracking your completed tasks this week";
+    if (peakDay.completed === 0) return t.startTracking;
     
+    const translatedDay = translateDay(peakDay.day);
     if (peakDayIndex <= 2) {
-      return `Your productivity peaked early in the week on ${peakDay.day}`;
+      return `${t.peakEarly} ${translatedDay}`;
     } else if (peakDayIndex <= 4) {
-      return `You completed most tasks mid-week on ${peakDay.day}`;
+      return `${t.peakMid} ${translatedDay}`;
     } else {
-      return `Your productivity peaked late in the week on ${peakDay.day}`;
+      return `${t.peakLate} ${translatedDay}`;
     }
   };
 
@@ -284,12 +334,12 @@ export function Dashboard() {
           <div className="relative z-10 pr-48 md:pr-72">
             <div className="space-y-4">
               <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight tracking-tight max-w-xl">
-                Hi {userName}! Ready to make today productive?
+                {t.greeting[greetingKey]}, {userName}! {t.readyToBeProductive}
               </h2>
               
               <div className="space-y-2">
                 <p className="text-white/80 text-sm md:text-base">
-                  You&apos;ve completed <span className="font-bold text-white">{weeklyProgress}%</span> of your weekly goals.
+                  {t.youveCompleted} <span className="font-bold text-white">{weeklyProgress}%</span> {t.weeklyGoalsCompleted}.
                 </p>
                 <div className="w-full max-w-lg h-2 bg-white/20 rounded-full overflow-hidden">
                   <div 
@@ -305,7 +355,7 @@ export function Dashboard() {
                 className="bg-white hover:bg-gray-50 text-[#6B2FD9] px-4 py-2.5 rounded-xl font-semibold shadow-lg transition-all hover:scale-105 hover:shadow-xl active:scale-95 flex items-center gap-1.5 text-sm"
               >
                 <Plus size={16} className="stroke-[2.5]" />
-                <span>Create Task</span>
+                <span>{t.createTask}</span>
               </button>
             </div>
           </div>
@@ -316,59 +366,58 @@ export function Dashboard() {
           {/* Total Tasks */}
           <div className="bg-white dark:bg-card rounded-xl border border-gray-200 dark:border-zinc-800 p-5 shadow-sm hover:shadow-md transition-all group">
             <div className="flex items-start justify-between mb-3">
-              <h3 className="text-sm text-gray-500 dark:text-gray-400">Total Tasks</h3>
+              <h3 className="text-sm text-gray-500 dark:text-gray-400">{t.totalTasks}</h3>
               <div className="p-1.5 bg-gray-50 dark:bg-zinc-900 rounded-lg group-hover:bg-gray-100 dark:group-hover:bg-gray-700 transition-colors">
                 <ListTodo className="w-4 h-4 text-gray-600 dark:text-gray-400" />
               </div>
             </div>
             <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{stats.total}</p>
             <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-gray-600 dark:text-gray-400">Assigned to you</span>
+              <span className="text-gray-600 dark:text-gray-400">{t.assignedToYou}</span>
             </div>
           </div>
 
           {/* Active Work */}
           <div className="bg-white dark:bg-card rounded-xl border border-gray-200 dark:border-zinc-800 p-5 shadow-sm hover:shadow-md transition-all group">
             <div className="flex items-start justify-between mb-3">
-              <h3 className="text-sm text-gray-500 dark:text-gray-400">Active Work</h3>
+              <h3 className="text-sm text-gray-500 dark:text-gray-400">{t.activeWork}</h3>
               <div className="p-1.5 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 transition-colors">
                 <Target className="w-4 h-4 text-indigo-500" />
               </div>
             </div>
             <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{stats.inProgress}</p>
             <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-indigo-500 font-medium">Focus</span>
-              <span className="text-gray-500 dark:text-gray-400">on these</span>
+              <span className="text-gray-500 dark:text-gray-400">{t.focusOnThese}</span>
             </div>
           </div>
 
           {/* Upcoming */}
           <div className="bg-white dark:bg-card rounded-xl border border-gray-200 dark:border-zinc-800 p-5 shadow-sm hover:shadow-md transition-all group">
             <div className="flex items-start justify-between mb-3">
-              <h3 className="text-sm text-gray-500 dark:text-gray-400">Upcoming</h3>
+              <h3 className="text-sm text-gray-500 dark:text-gray-400">{t.upcoming}</h3>
               <div className="p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors">
                 <CalendarClock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               </div>
             </div>
             <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{stats.upcoming}</p>
             <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-blue-600 dark:text-blue-400 font-medium">To do</span>
-              <span className="text-gray-500 dark:text-gray-400">& in review</span>
+              <span className="text-blue-600 dark:text-blue-400 font-medium">{t.todo}</span>
+              <span className="text-gray-500 dark:text-gray-400">{t.todoAndReview}</span>
             </div>
           </div>
 
           {/* Completed This Week */}
           <div className="bg-white dark:bg-card rounded-xl border border-gray-200 dark:border-zinc-800 p-5 shadow-sm hover:shadow-md transition-all group">
             <div className="flex items-start justify-between mb-3">
-              <h3 className="text-sm text-gray-500 dark:text-gray-400">Completed This Week</h3>
+              <h3 className="text-sm text-gray-500 dark:text-gray-400">{t.completedThisWeek}</h3>
               <div className="p-1.5 bg-green-50 dark:bg-green-900/30 rounded-lg group-hover:bg-green-100 dark:group-hover:bg-green-900/50 transition-colors">
                 <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
               </div>
             </div>
             <p className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{userCompletedThisWeek}</p>
             <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-green-600 dark:text-green-400 font-medium">Done</span>
-              <span className="text-gray-500 dark:text-gray-400">by you this week</span>
+              <span className="text-green-600 dark:text-green-400 font-medium">{t.done}</span>
+              <span className="text-gray-500 dark:text-gray-400">{t.byYouThisWeek}</span>
             </div>
           </div>
         </div>
@@ -383,8 +432,8 @@ export function Dashboard() {
                 <ChartIcon size={24} />
               </div>
               <div>
-                <h3 className="font-bold text-xl text-gray-900 dark:text-white">Weekly Progress</h3>
-                <p className="text-sm text-gray-500">Tasks completed this week</p>
+                <h3 className="font-bold text-xl text-gray-900 dark:text-white">{t.weeklyProgress}</h3>
+                <p className="text-sm text-gray-500">{t.tasksCompletedThisWeek}</p>
               </div>
             </div>
             
@@ -405,7 +454,7 @@ export function Dashboard() {
                     tickLine={false} 
                     tick={{ fill: '#6b7280', fontSize: 12 }} 
                     dy={10}
-                    tickFormatter={(value) => value.substring(0, 3)}
+                    tickFormatter={(value) => translateDayShort(value)}
                   />
                   <YAxis 
                     axisLine={false} 
@@ -425,7 +474,7 @@ export function Dashboard() {
                     }}
                     itemStyle={{ color: '#8b5cf6' }}
                     cursor={{ stroke: '#8b5cf6', strokeWidth: 1, strokeDasharray: '4 4' }}
-                    formatter={(value: number) => [`${value} tasks`, 'Completed']}
+                    formatter={(value) => [`${value} ${t.tasks}`, t.completedLabel]}
                     labelFormatter={(label) => label}
                   />
                   <Area 
@@ -482,7 +531,7 @@ export function Dashboard() {
           {/* Recent Activity */}
           <div className="bg-white dark:bg-card rounded-3xl border border-gray-200 dark:border-zinc-800 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-semibold text-gray-900 dark:text-white">Recent Activity</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-white">{t.recentActivity}</h2>
               <button 
                 onClick={() => setShowHistoryModal(true)}
                 className="text-sm text-[#6B2FD9] hover:text-[#5a27b8] font-medium"
@@ -526,9 +575,9 @@ export function Dashboard() {
         <div>
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">My Tasks</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">{t.myTasks}</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Tasks assigned to you from all spaces
+                {t.tasksAssignedToYou}
               </p>
             </div>
             <div className="flex gap-2">
@@ -573,8 +622,8 @@ export function Dashboard() {
             <div className="flex-1 flex items-center justify-center py-12 text-gray-500 dark:text-gray-400">
               <div className="text-center">
                 <CheckCircle2 className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
-                <p className="font-medium">No tasks assigned to you</p>
-                <p className="text-sm">Tasks you're assigned to will appear here</p>
+                <p className="font-medium">{t.noTasksAssignedYet}</p>
+                <p className="text-sm">{t.tasksAssignedToYou}</p>
               </div>
             </div>
           )}
@@ -800,8 +849,8 @@ export function Dashboard() {
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {selectedSpaceId === "echo" 
-                  ? "Task will be added to Echo Tasks."
-                  : "Task will be added to the To Do column of the selected space."}
+                  ? t.taskWillBeAddedToEcho
+                  : t.taskWillBeAdded}
               </p>
             </div>
 

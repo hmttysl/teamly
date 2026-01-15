@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { UserPlus, Crown, Shield, MoreVertical, Copy, Check, User } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { UserPlus, Crown, Shield, MoreVertical, Copy, Check, User, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -12,109 +12,305 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { currentUser } from "@/lib/mock-data";
 import { type Role, hasPermission } from "@/lib/permissions";
+import { useAuth } from "@/lib/auth-context";
+import { useLanguage } from "@/lib/language-context";
+import { supabase } from "@/lib/supabase";
 
 interface SpaceMember {
-  id: number;
+  id: string;
   name: string;
   email: string;
   avatar: string;
   initials: string;
   role: Role;
   isOnline: boolean;
-  lastSeen?: string;
+  joinedAt: string;
 }
 
-// Mock members with roles and online status
-const mockSpaceMembers: SpaceMember[] = [
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john.doe@company.com",
-    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop",
-    initials: "JD",
-    role: "Owner",
-    isOnline: true,
-  },
-  {
-    id: 2,
-    name: "Sarah Chen",
-    email: "sarah.chen@company.com",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop",
-    initials: "SC",
-    role: "Lead",
-    isOnline: true,
-  },
-  {
-    id: 3,
-    name: "Alex Turner",
-    email: "alex.turner@company.com",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop",
-    initials: "AT",
-    role: "Lead",
-    isOnline: false,
-    lastSeen: "10 min ago",
-  },
-  {
-    id: 4,
-    name: "Lisa Wang",
-    email: "lisa.wang@company.com",
-    avatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=100&h=100&fit=crop",
-    initials: "LW",
-    role: "Teammate",
-    isOnline: false,
-    lastSeen: "2 hours ago",
-  },
-  {
-    id: 5,
-    name: "Mike Johnson",
-    email: "mike.j@company.com",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
-    initials: "MJ",
-    role: "Teammate",
-    isOnline: true,
-  },
-  {
-    id: 6,
-    name: "Emma Davis",
-    email: "emma.davis@company.com",
-    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop",
-    initials: "ED",
-    role: "Teammate",
-    isOnline: false,
-    lastSeen: "1 day ago",
-  },
-];
+interface PendingInvite {
+  id: string;
+  email: string;
+  status: string;
+  createdAt: string;
+}
 
 interface SpaceMembersProps {
   spaceName?: string;
+  spaceId?: string; // Supabase UUID
 }
 
-export function SpaceMembers({ spaceName }: SpaceMembersProps) {
-  const [members, setMembers] = useState<SpaceMember[]>(mockSpaceMembers);
+export function SpaceMembers({ spaceName, spaceId }: SpaceMembersProps) {
+  const { user, profile } = useAuth();
+  const { t } = useLanguage();
+  
+  const [members, setMembers] = useState<SpaceMember[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [linkCopied, setLinkCopied] = useState(false);
+  const [inviteLink, setInviteLink] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [inviting, setInviting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  // Get current user's role (for permission checks)
-  const currentMember = members.find(m => m.name === currentUser.name);
-  const currentRole = currentMember?.role || "Teammate";
+  // Current user's role in this space
+  const [currentRole, setCurrentRole] = useState<Role>("Teammate");
 
-  const handleInvite = () => {
-    if (inviteEmail.trim()) {
-      console.log("Inviting:", inviteEmail);
+  // Fetch members from Supabase
+  const fetchMembers = useCallback(async () => {
+    if (!spaceId) return;
+    
+    setLoading(true);
+    try {
+      // Get space members with their profile info
+      const { data: membersData, error: membersError } = await supabase
+        .from("space_members")
+        .select(`
+          id,
+          role,
+          joined_at,
+          user_id,
+          profiles:user_id (
+            id,
+            name,
+            email,
+            avatar_url
+          )
+        `)
+        .eq("space_id", spaceId);
+
+      if (membersError) throw membersError;
+
+      if (membersData) {
+        const formattedMembers: SpaceMember[] = membersData.map((m: any) => {
+          const profileData = m.profiles;
+          const name = profileData?.name || profileData?.email?.split('@')[0] || "User";
+          return {
+            id: m.id,
+            name,
+            email: profileData?.email || "",
+            avatar: profileData?.avatar_url || "",
+            initials: name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2),
+            role: m.role as Role,
+            isOnline: m.user_id === user?.id, // Only current user is "online"
+            joinedAt: m.joined_at,
+          };
+        });
+        setMembers(formattedMembers);
+
+        // Set current user's role
+        const currentMember = membersData.find((m: any) => m.user_id === user?.id);
+        if (currentMember) {
+          setCurrentRole(currentMember.role as Role);
+        }
+      }
+
+      // Get pending invites
+      const { data: invitesData, error: invitesError } = await supabase
+        .from("space_invites")
+        .select(`
+          id,
+          invite_code,
+          status,
+          created_at,
+          invited_user_id,
+          profiles:invited_user_id (
+            email
+          )
+        `)
+        .eq("space_id", spaceId)
+        .eq("status", "pending");
+
+      if (!invitesError && invitesData) {
+        const formattedInvites: PendingInvite[] = invitesData.map((inv: any) => ({
+          id: inv.id,
+          email: inv.profiles?.email || "Unknown",
+          status: inv.status,
+          createdAt: inv.created_at,
+        }));
+        setPendingInvites(formattedInvites);
+      }
+
+      // Generate or get invite link
+      await generateInviteLink();
+
+    } catch (err: any) {
+      console.error("Error fetching members:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [spaceId, user?.id]);
+
+  // Generate invite link for this space
+  const generateInviteLink = async () => {
+    if (!spaceId || !user) return;
+
+    // Check if there's an existing general invite link
+    const { data: existingInvite } = await supabase
+      .from("space_invites")
+      .select("invite_code")
+      .eq("space_id", spaceId)
+      .eq("invited_by", user.id)
+      .is("invited_user_id", null)
+      .eq("status", "pending")
+      .single();
+
+    if (existingInvite) {
+      setInviteLink(`${window.location.origin}/invite/${existingInvite.invite_code}`);
+    } else {
+      // Create new invite link
+      const inviteCode = crypto.randomUUID().slice(0, 8);
+      const { error } = await supabase
+        .from("space_invites")
+        .insert({
+          space_id: spaceId,
+          invited_by: user.id,
+          invite_code: inviteCode,
+          invited_user_id: null, // General link, not for specific user
+        });
+
+      if (!error) {
+        setInviteLink(`${window.location.origin}/invite/${inviteCode}`);
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchMembers();
+  }, [fetchMembers]);
+
+  // Handle invite by email
+  const handleInvite = async () => {
+    if (!inviteEmail.trim() || !spaceId || !user) return;
+    
+    setInviting(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      // Find user by email
+      const { data: invitedUser, error: userError } = await supabase
+        .from("profiles")
+        .select("id, email, name")
+        .eq("email", inviteEmail.trim().toLowerCase())
+        .single();
+
+      if (userError || !invitedUser) {
+        setError("No user found with this email. They need to sign up first.");
+        setInviting(false);
+        return;
+      }
+
+      // Check if already a member
+      const { data: existingMember } = await supabase
+        .from("space_members")
+        .select("id")
+        .eq("space_id", spaceId)
+        .eq("user_id", invitedUser.id)
+        .single();
+
+      if (existingMember) {
+        setError("This user is already a member of this space.");
+        setInviting(false);
+        return;
+      }
+
+      // Check if already invited
+      const { data: existingInvite } = await supabase
+        .from("space_invites")
+        .select("id")
+        .eq("space_id", spaceId)
+        .eq("invited_user_id", invitedUser.id)
+        .eq("status", "pending")
+        .single();
+
+      if (existingInvite) {
+        setError("This user already has a pending invite.");
+        setInviting(false);
+        return;
+      }
+
+      // Create invite
+      const inviteCode = crypto.randomUUID().slice(0, 8);
+      const { error: inviteError } = await supabase
+        .from("space_invites")
+        .insert({
+          space_id: spaceId,
+          invited_by: user.id,
+          invited_user_id: invitedUser.id,
+          invite_code: inviteCode,
+        });
+
+      if (inviteError) throw inviteError;
+
+      // Create notification for invited user
+      const { error: notifError } = await supabase
+        .from("notifications")
+        .insert({
+          user_id: invitedUser.id,
+          type: "space_invite",
+          title: `Invitation to join "${spaceName}"`,
+          message: `${profile?.name || user.email} invited you to join their space.`,
+          data: {
+            space_id: spaceId,
+            space_name: spaceName,
+            invite_code: inviteCode,
+            invited_by_name: profile?.name || user.email,
+          },
+        });
+
+      if (notifError) console.error("Error creating notification:", notifError);
+
+      setSuccess(`Invite sent to ${invitedUser.name || invitedUser.email}!`);
       setInviteEmail("");
+      fetchMembers(); // Refresh
+
+    } catch (err: any) {
+      console.error("Error sending invite:", err);
+      setError(err.message);
+    } finally {
+      setInviting(false);
     }
   };
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(`https://teamly.app/invite/abc123`);
-    setLinkCopied(true);
-    setTimeout(() => setLinkCopied(false), 2000);
+    if (inviteLink) {
+      navigator.clipboard.writeText(inviteLink);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
   };
 
-  const handleRemoveMember = (memberId: number) => {
-    setMembers(members.filter(m => m.id !== memberId));
+  const handleRemoveMember = async (memberId: string) => {
+    try {
+      const { error } = await supabase
+        .from("space_members")
+        .delete()
+        .eq("id", memberId);
+
+      if (error) throw error;
+      fetchMembers();
+    } catch (err: any) {
+      console.error("Error removing member:", err);
+      setError(err.message);
+    }
+  };
+
+  const handleChangeRole = async (memberId: string, newRole: Role) => {
+    try {
+      const { error } = await supabase
+        .from("space_members")
+        .update({ role: newRole })
+        .eq("id", memberId);
+
+      if (error) throw error;
+      fetchMembers();
+    } catch (err: any) {
+      console.error("Error changing role:", err);
+      setError(err.message);
+    }
   };
 
   const getRoleIcon = (role: Role) => {
@@ -139,17 +335,43 @@ export function SpaceMembers({ spaceName }: SpaceMembersProps) {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#6B2FD9]" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 bg-gray-50 dark:bg-background overflow-auto">
       <div className="max-w-5xl mx-auto p-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold text-gray-900 dark:text-white mb-2">Members</h1>
+          <h1 className="text-3xl font-semibold text-gray-900 dark:text-white mb-2">{t.members}</h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Manage members who have access to{" "}
-            <span className="font-medium text-gray-900 dark:text-white">{spaceName || "this space"}</span>
+            {t.manageMembersFor}{" "}
+            <span className="font-medium text-gray-900 dark:text-white">{spaceName || t.spaces}</span>
           </p>
         </div>
+
+        {/* Error/Success Messages */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2 text-red-700 dark:text-red-300">
+            <AlertCircle className="w-5 h-5" />
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2 text-green-700 dark:text-green-300">
+            <Check className="w-5 h-5" />
+            {success}
+          </div>
+        )}
 
         {/* Invite Section - Only for Owner and Lead */}
         {hasPermission(currentRole, "canInviteMembers") && (
@@ -159,15 +381,15 @@ export function SpaceMembers({ spaceName }: SpaceMembersProps) {
                 <UserPlus className="w-5 h-5 text-[#6B2FD9]" />
               </div>
               <div>
-                <h2 className="font-semibold text-gray-900 dark:text-white">Invite Members</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Add new members to this space</p>
+                <h2 className="font-semibold text-gray-900 dark:text-white">{t.inviteMembersTitle}</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t.addNewMembersToSpace}</p>
               </div>
             </div>
             
             <div className="flex gap-3 mb-4">
               <Input
                 type="email"
-                placeholder="Enter email address"
+                placeholder={t.enterEmailAddress}
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
                 onKeyDown={(e) => {
@@ -179,10 +401,10 @@ export function SpaceMembers({ spaceName }: SpaceMembersProps) {
               />
               <Button
                 onClick={handleInvite}
-                disabled={!inviteEmail.trim()}
+                disabled={!inviteEmail.trim() || inviting}
                 className="bg-[#6B2FD9] hover:bg-[#5a27b8]"
               >
-                Send Invite
+                {inviting ? <Loader2 className="w-4 h-4 animate-spin" /> : t.sendInvite}
               </Button>
             </div>
 
@@ -190,28 +412,48 @@ export function SpaceMembers({ spaceName }: SpaceMembersProps) {
             <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-zinc-900 rounded-lg">
               <Input
                 readOnly
-                value="https://teamly.app/invite/abc123"
+                value={inviteLink || "Generating link..."}
                 className="flex-1 text-sm bg-transparent border-0 dark:text-gray-300"
               />
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleCopyLink}
+                disabled={!inviteLink}
                 className="gap-2"
               >
                 {linkCopied ? (
                   <>
                     <Check className="w-4 h-4 text-green-500" />
-                    Copied!
+                    {t.copied}
                   </>
                 ) : (
                   <>
                     <Copy className="w-4 h-4" />
-                    Copy Link
+                    {t.copyLink}
                   </>
                 )}
               </Button>
             </div>
+
+            {/* Pending Invites */}
+            {pendingInvites.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-800">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  {t.pendingInvites} ({pendingInvites.length})
+                </h3>
+                <div className="space-y-2">
+                  {pendingInvites.map((invite) => (
+                    <div key={invite.id} className="flex items-center justify-between text-sm p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                      <span className="text-amber-800 dark:text-amber-200">{invite.email}</span>
+                      <span className="text-amber-600 dark:text-amber-400 text-xs">
+                        {formatDate(invite.createdAt)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -219,10 +461,10 @@ export function SpaceMembers({ spaceName }: SpaceMembersProps) {
         <div className="bg-white dark:bg-card rounded-xl border border-gray-200 dark:border-zinc-800 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-gray-200 dark:border-zinc-800">
             <h2 className="font-semibold text-gray-900 dark:text-white">
-              Space Members ({members.length})
+              {t.spaceMembersCount} ({members.length})
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              People who can access and collaborate in this space
+              {t.peopleWhoCanAccess}
             </p>
           </div>
 
@@ -261,9 +503,9 @@ export function SpaceMembers({ spaceName }: SpaceMembersProps) {
                       <span className="text-gray-300 dark:text-gray-600">•</span>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         {member.isOnline ? (
-                          <span className="text-green-600 dark:text-green-400">Online</span>
+                          <span className="text-green-600 dark:text-green-400">{t.online}</span>
                         ) : (
-                          `Seen ${member.lastSeen}`
+                          `Joined ${formatDate(member.joinedAt)}`
                         )}
                       </p>
                     </div>
@@ -285,8 +527,12 @@ export function SpaceMembers({ spaceName }: SpaceMembersProps) {
                     <DropdownMenuContent align="end" className="w-48">
                       {hasPermission(currentRole, "canChangeRoles") && (
                         <>
-                          <DropdownMenuItem>Make Lead</DropdownMenuItem>
-                          <DropdownMenuItem>Make Teammate</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleChangeRole(member.id, "Lead")}>
+                            {t.makeLead}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleChangeRole(member.id, "Teammate")}>
+                            {t.makeTeammate}
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                         </>
                       )}
@@ -294,7 +540,7 @@ export function SpaceMembers({ spaceName }: SpaceMembersProps) {
                         className="text-red-600 dark:text-red-400"
                         onClick={() => handleRemoveMember(member.id)}
                       >
-                        Remove from Space
+                        {t.removeFromSpace}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -307,7 +553,7 @@ export function SpaceMembers({ spaceName }: SpaceMembersProps) {
         {/* Info Box */}
         <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
           <p className="text-sm text-blue-900 dark:text-blue-200">
-            <span className="font-medium">Roles:</span> Owner has full control. Lead can manage tasks and invite members. Teammate can view and update task status.
+            {t.rolesInfo}
           </p>
         </div>
       </div>

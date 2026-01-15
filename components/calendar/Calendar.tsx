@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { currentUser } from "@/lib/mock-data";
 import { useTasks, type Task } from "@/lib/use-tasks";
 import { useEcho, type EchoTask } from "@/lib/use-echo";
+import { useLanguage } from "@/lib/language-context";
+import { useAuth } from "@/lib/auth-context";
 
 // Time slots for the calendar
 const timeSlots = [
@@ -18,9 +19,21 @@ const timeSlots = [
 export function Calendar() {
   const { kanban } = useTasks();
   const { tasks: echoTasks } = useEcho();
+  const { t } = useLanguage();
+  const { user, profile } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedTask, setSelectedTask] = useState<Task | EchoTask | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Current user from auth
+  const currentUser = useMemo(() => ({
+    name: profile?.name || user?.email?.split('@')[0] || "User",
+    avatar: profile?.avatar_url || "",
+    initials: (profile?.name || user?.email?.split('@')[0] || "U").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2),
+  }), [user, profile]);
+  
+  // Translated day names
+  const dayNames = [t.sun, t.mon, t.tue, t.wed, t.thu, t.fri, t.sat];
 
   // Combine all tasks from kanban and filter for current user
   const userTasks = useMemo(() => {
@@ -39,7 +52,7 @@ export function Calendar() {
       assignees: task.assignees || [task.assignee],
       space: task.space || { name: "General", color: "bg-gray-500" },
     }));
-  }, [kanban]);
+  }, [kanban, currentUser.name]);
 
   // Get week days
   const weekDays = useMemo(() => {
@@ -63,7 +76,7 @@ export function Calendar() {
       space: { name: "Echo", color: "bg-[#6B2FD9]" },
       assignees: [{ name: currentUser.name, avatar: currentUser.avatar, initials: currentUser.initials }],
     }));
-  }, [echoTasks]);
+  }, [echoTasks, currentUser]);
 
   // Get tasks for a specific day (filtered by search if any)
   const getTasksForDay = (date: Date) => {
@@ -256,7 +269,7 @@ export function Calendar() {
             onClick={handleToday}
             className="bg-white dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-zinc-700"
           >
-            Today
+            {t.today}
           </Button>
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-zinc-800 rounded-lg p-1">
             <Button variant="ghost" size="icon" onClick={handlePrevWeek} className="h-8 w-8 text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white">
@@ -443,10 +456,10 @@ export function Calendar() {
                     : "bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300"
                 }`}>
                   {selectedTask.status === "done" && <CheckCircle2 className="w-4 h-4" />}
-                  {selectedTask.status === "todo" && "To Do"}
-                  {selectedTask.status === "inProgress" && "In Progress"}
-                  {selectedTask.status === "review" && "In Review"}
-                  {selectedTask.status === "done" && "Completed"}
+                  {selectedTask.status === "todo" && t.todo}
+                  {selectedTask.status === "inProgress" && t.inProgress}
+                  {selectedTask.status === "review" && t.review}
+                  {selectedTask.status === "done" && t.completed}
                 </span>
               </div>
 

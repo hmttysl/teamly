@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { Settings as SettingsIcon, Palette, Users, Trash2, LogOut, Archive, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Settings as SettingsIcon, Palette, Users, Trash2, LogOut, Archive, Check, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ConfirmDialog } from "@/components/dialogs/ConfirmDialog";
-import { currentUser } from "@/lib/mock-data";
 import { type Role, hasPermission } from "@/lib/permissions";
+import { useLanguage } from "@/lib/language-context";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface SpaceSettingsProps {
   spaceName?: string;
@@ -23,13 +29,13 @@ const currentUserRole: Role = "Owner";
 
 const colorOptions = [
   { name: "Purple", class: "bg-purple-500" },
-  { name: "Red", class: "bg-red-500" },
   { name: "Pink", class: "bg-pink-500" },
   { name: "Blue", class: "bg-blue-500" },
-  { name: "Green", class: "bg-green-500" },
-  { name: "Yellow", class: "bg-yellow-500" },
-  { name: "Orange", class: "bg-orange-500" },
   { name: "Cyan", class: "bg-cyan-500" },
+  { name: "Orange", class: "bg-orange-500" },
+  { name: "Green", class: "bg-green-500" },
+  { name: "Indigo", class: "bg-indigo-500" },
+  { name: "Rose", class: "bg-rose-500" },
 ];
 
 export function SpaceSettings({ 
@@ -41,43 +47,89 @@ export function SpaceSettings({
   onArchiveSpace,
   onUpdateSpace,
 }: SpaceSettingsProps) {
+  const { t } = useLanguage();
   const [name, setName] = useState(spaceName);
   const [description, setDescription] = useState("Collaborate on tasks and projects");
   const [selectedColor, setSelectedColor] = useState(spaceColor);
   const [saved, setSaved] = useState(false);
+  const [colorSaved, setColorSaved] = useState(false);
   const [anyoneCanInvite, setAnyoneCanInvite] = useState(true);
   const [membersCanCreateTasks, setMembersCanCreateTasks] = useState(true);
+  const [permissionsSaved, setPermissionsSaved] = useState(false);
+  
+  // Dialog states
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  
+  // Sync state with props when they change
+  useEffect(() => {
+    setName(spaceName);
+  }, [spaceName]);
+  
+  useEffect(() => {
+    setSelectedColor(spaceColor);
+  }, [spaceColor]);
   
   const handleSaveDetails = () => {
-    if (spaceId && onUpdateSpace) {
+    if (spaceId !== undefined && onUpdateSpace) {
       onUpdateSpace(spaceId, { name, description });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
     }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
   };
 
   const handleColorChange = (color: string) => {
     setSelectedColor(color);
-    if (spaceId && onUpdateSpace) {
+    if (spaceId !== undefined && onUpdateSpace) {
       onUpdateSpace(spaceId, { color });
+      setColorSaved(true);
+      setTimeout(() => setColorSaved(false), 1500);
     }
   };
   
+  const handleSavePermissions = () => {
+    // Save to localStorage for now (can be moved to Supabase later)
+    if (spaceId !== undefined) {
+      localStorage.setItem(`space-${spaceId}-permissions`, JSON.stringify({
+        anyoneCanInvite,
+        membersCanCreateTasks,
+      }));
+      setPermissionsSaved(true);
+      setTimeout(() => setPermissionsSaved(false), 2000);
+    }
+  };
+  
+  // Load permissions from localStorage
+  useEffect(() => {
+    if (spaceId !== undefined) {
+      const saved = localStorage.getItem(`space-${spaceId}-permissions`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setAnyoneCanInvite(parsed.anyoneCanInvite ?? true);
+        setMembersCanCreateTasks(parsed.membersCanCreateTasks ?? true);
+      }
+    }
+  }, [spaceId]);
+  
   const handleLeave = () => {
-    if (spaceId && onLeaveSpace) {
+    if (spaceId !== undefined && onLeaveSpace) {
       onLeaveSpace(spaceId);
+      setShowLeaveDialog(false);
     }
   };
 
   const handleDelete = () => {
-    if (spaceId && onDeleteSpace) {
+    if (spaceId !== undefined && onDeleteSpace) {
       onDeleteSpace(spaceId);
+      setShowDeleteDialog(false);
     }
   };
 
   const handleArchive = () => {
-    if (spaceId && onArchiveSpace) {
+    if (spaceId !== undefined && onArchiveSpace) {
       onArchiveSpace(spaceId);
+      setShowArchiveDialog(false);
     }
   };
 
@@ -86,10 +138,10 @@ export function SpaceSettings({
       <div className="max-w-4xl mx-auto p-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold text-gray-900 dark:text-white mb-2">Settings</h1>
+          <h1 className="text-3xl font-semibold text-gray-900 dark:text-white mb-2">{t.settings}</h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Manage settings for{" "}
-            <span className="font-medium text-gray-900 dark:text-white">{name || "this space"}</span>
+            {t.manageSpaceFor}{" "}
+            <span className="font-medium text-gray-900 dark:text-white">{name || t.spaces}</span>
           </p>
         </div>
 
@@ -100,32 +152,32 @@ export function SpaceSettings({
               <SettingsIcon className="w-5 h-5 text-[#6B2FD9]" />
             </div>
             <div>
-              <h2 className="font-semibold text-gray-900 dark:text-white">Space Details</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Update space name and description</p>
+              <h2 className="font-semibold text-gray-900 dark:text-white">{t.spaceDetails}</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t.updateSpaceInfo}</p>
             </div>
           </div>
 
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Space Name
+                {t.spaceName}
               </label>
               <Input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Enter space name"
+                placeholder={t.enterSpaceName}
                 className="dark:bg-zinc-900 dark:border-zinc-800 dark:text-white dark:placeholder:text-gray-500"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Description
+                {t.description}
               </label>
               <textarea
                 className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6B2FD9] focus:border-transparent"
                 rows={3}
-                placeholder="Add a description for this space"
+                placeholder={t.addDescriptionForSpace}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -137,10 +189,10 @@ export function SpaceSettings({
               {saved ? (
                 <>
                   <Check className="w-4 h-4" />
-                  Saved!
+                  {t.saved}
                 </>
               ) : (
-                "Save Changes"
+                t.saveChanges
               )}
             </Button>
           </div>
@@ -148,14 +200,21 @@ export function SpaceSettings({
 
         {/* Space Color */}
         <div className="bg-white dark:bg-card rounded-xl border border-gray-200 dark:border-zinc-800 p-6 shadow-sm mb-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-              <Palette className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                <Palette className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-gray-900 dark:text-white">{t.spaceColor}</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t.chooseColorForSpace}</p>
+              </div>
             </div>
-            <div>
-              <h2 className="font-semibold text-gray-900 dark:text-white">Space Color</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Choose a color to identify this space</p>
-            </div>
+            {colorSaved && (
+              <span className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+                <Check className="w-4 h-4" /> {t.saved}
+              </span>
+            )}
           </div>
 
           <div className="flex gap-3 flex-wrap">
@@ -163,15 +222,20 @@ export function SpaceSettings({
               <button
                 key={color.class}
                 onClick={() => handleColorChange(color.class)}
-                className={`w-10 h-10 rounded-lg ${color.class} hover:scale-110 transition-transform border-2 ${
-                  selectedColor === color.class 
-                    ? "border-white ring-2 ring-offset-2 ring-[#6B2FD9] dark:ring-offset-zinc-950" 
-                    : "border-white/50 dark:border-zinc-800"
-                } shadow-md relative`}
+                className={`relative w-9 h-9 rounded-full transition-all duration-300 hover:scale-110 ${
+                  selectedColor === color.class
+                    ? "ring-2 ring-offset-2 ring-[#6B2FD9] dark:ring-offset-zinc-900"
+                    : ""
+                }`}
               >
-                {selectedColor === color.class && (
-                  <Check className="w-5 h-5 text-white absolute inset-0 m-auto" />
-                )}
+                {/* Subtle glow effect */}
+                <div className={`absolute inset-0 rounded-full ${color.class} blur-sm opacity-40`} />
+                {/* Main color circle */}
+                <div className={`absolute inset-0.5 rounded-full ${color.class} flex items-center justify-center`}>
+                  {selectedColor === color.class && (
+                    <Check className="w-4 h-4 text-white" />
+                  )}
+                </div>
               </button>
             ))}
           </div>
@@ -185,37 +249,51 @@ export function SpaceSettings({
                 <Users className="w-5 h-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <h2 className="font-semibold text-gray-900 dark:text-white">Permissions</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Control who can do what in this space</p>
+                <h2 className="font-semibold text-gray-900 dark:text-white">{t.permissions}</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t.manageWhoCanDo}</p>
               </div>
             </div>
 
             <div className="space-y-3">
               <label className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-900 cursor-pointer">
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">Anyone can invite members</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">All members can invite others to this space</p>
+                  <p className="font-medium text-gray-900 dark:text-white">{t.anyoneCanInvite}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t.allowAnyoneToInvite}</p>
                 </div>
                 <input 
                   type="checkbox" 
-                  className="w-4 h-4 text-[#6B2FD9] rounded accent-[#6B2FD9]" 
+                  className="w-5 h-5 text-[#6B2FD9] rounded accent-[#6B2FD9]" 
                   checked={anyoneCanInvite}
                   onChange={(e) => setAnyoneCanInvite(e.target.checked)}
                 />
               </label>
               <label className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-900 cursor-pointer">
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">Members can create tasks</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Allow all members to create new tasks</p>
+                  <p className="font-medium text-gray-900 dark:text-white">{t.membersCanCreateTasks}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t.allowMembersToCreate}</p>
                 </div>
                 <input 
                   type="checkbox" 
-                  className="w-4 h-4 text-[#6B2FD9] rounded accent-[#6B2FD9]" 
+                  className="w-5 h-5 text-[#6B2FD9] rounded accent-[#6B2FD9]" 
                   checked={membersCanCreateTasks}
                   onChange={(e) => setMembersCanCreateTasks(e.target.checked)}
                 />
               </label>
             </div>
+            
+            <Button 
+              className="mt-4 bg-[#6B2FD9] hover:bg-[#5a27b8] gap-2"
+              onClick={handleSavePermissions}
+            >
+              {permissionsSaved ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  {t.saved}
+                </>
+              ) : (
+                t.savePermissions
+              )}
+            </Button>
           </div>
         )}
 
@@ -227,83 +305,69 @@ export function SpaceSettings({
                 <LogOut className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <h2 className="font-semibold text-amber-900 dark:text-amber-200">Leave Space</h2>
-                <p className="text-sm text-amber-600 dark:text-amber-400">Remove yourself from this space</p>
+                <h2 className="font-semibold text-amber-900 dark:text-amber-200">{t.leaveSpace}</h2>
+                <p className="text-sm text-amber-600 dark:text-amber-400">{t.removeYourselfFromSpace}</p>
               </div>
             </div>
 
             <div className="flex items-center justify-between p-4 border border-amber-200 dark:border-amber-800 rounded-lg bg-amber-50 dark:bg-amber-900/20">
               <div>
-                <p className="font-medium text-amber-900 dark:text-amber-200">Leave this space</p>
-                <p className="text-sm text-amber-700 dark:text-amber-400">You will lose access to all tasks and conversations in this space</p>
+                <p className="font-medium text-amber-900 dark:text-amber-200">{t.leaveThisSpace}</p>
+                <p className="text-sm text-amber-700 dark:text-amber-400">{t.loseAccessWarning}</p>
               </div>
-              <ConfirmDialog
-                title="Leave Space"
-                description={`Are you sure you want to leave "${name}"? You will lose access to all tasks and conversations. You can rejoin if someone invites you again.`}
-                confirmButtonText="Leave Space"
-                variant="warning"
-                onConfirm={handleLeave}
+              <Button 
+                variant="outline" 
+                className="text-amber-600 border-amber-600 hover:bg-amber-600 hover:text-white"
+                onClick={() => setShowLeaveDialog(true)}
               >
-                <Button variant="outline" className="text-amber-600 border-amber-600 hover:bg-amber-600 hover:text-white">
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Leave
-                </Button>
-              </ConfirmDialog>
+                <LogOut className="w-4 h-4 mr-2" />
+                {t.leave}
+              </Button>
             </div>
           </div>
         )}
 
-        {/* Danger Zone - Only for Owner */}
+        {/* Space Actions - Only for Owner */}
         {hasPermission(currentUserRole, "canDeleteSpace") && (
-          <div className="bg-white dark:bg-card rounded-xl border border-red-200 dark:border-red-800 p-6 shadow-sm">
+          <div className="bg-white dark:bg-card rounded-xl border border-gray-200 dark:border-zinc-800 p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-red-50 dark:bg-red-900/30 rounded-lg">
-                <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+              <div className="p-2 bg-gray-100 dark:bg-zinc-800 rounded-lg">
+                <SettingsIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </div>
               <div>
-                <h2 className="font-semibold text-red-900 dark:text-red-200">Danger Zone</h2>
-                <p className="text-sm text-red-600 dark:text-red-400">Irreversible actions for this space</p>
+                <h2 className="font-semibold text-gray-900 dark:text-white">{t.spaceActions}</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t.theseActionsIrreversible}</p>
               </div>
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-zinc-800 rounded-lg">
+              <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-zinc-800 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors">
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">Archive this space</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Hide this space from the sidebar. You can unarchive later.</p>
+                  <p className="font-medium text-gray-900 dark:text-white">{t.archiveThisSpace}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t.archiveSpaceDescShort}</p>
                 </div>
-                <ConfirmDialog
-                  title="Archive Space"
-                  description={`Are you sure you want to archive "${name}"? The space will be hidden from the sidebar but can be restored later.`}
-                  confirmButtonText="Archive"
-                  variant="warning"
-                  onConfirm={handleArchive}
+                <Button 
+                  variant="outline" 
+                  className="text-gray-700 dark:text-gray-300"
+                  onClick={() => setShowArchiveDialog(true)}
                 >
-                  <Button variant="outline" className="text-gray-700 dark:text-gray-300">
-                    <Archive className="w-4 h-4 mr-2" />
-                    Archive
-                  </Button>
-                </ConfirmDialog>
+                  <Archive className="w-4 h-4 mr-2" />
+                  {t.archive}
+                </Button>
               </div>
               <div className="flex items-center justify-between p-4 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-900/20">
                 <div>
-                  <p className="font-medium text-red-900 dark:text-red-200">Delete this space</p>
-                  <p className="text-sm text-red-600 dark:text-red-400">Permanently delete this space and all its tasks. This action cannot be undone.</p>
+                  <p className="font-medium text-red-900 dark:text-red-200">{t.deleteThisSpace}</p>
+                  <p className="text-sm text-red-600 dark:text-red-400">{t.deleteSpaceDescShort}</p>
                 </div>
-                <ConfirmDialog
-                  title="Delete Space"
-                  description={`This will permanently delete "${name}" and all its tasks, comments, and files. This action cannot be undone.`}
-                  confirmText={name}
-                  confirmButtonText="Delete Space"
-                  variant="danger"
-                  requireConfirmText={true}
-                  onConfirm={handleDelete}
+                <Button 
+                  variant="outline" 
+                  className="text-red-600 border-red-600 hover:bg-red-600 hover:text-white"
+                  onClick={() => setShowDeleteDialog(true)}
                 >
-                  <Button variant="outline" className="text-red-600 border-red-600 hover:bg-red-600 hover:text-white">
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete
-                  </Button>
-                </ConfirmDialog>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {t.delete}
+                </Button>
               </div>
             </div>
           </div>
@@ -311,12 +375,114 @@ export function SpaceSettings({
 
         {/* Owner can't leave notice */}
         {!hasPermission(currentUserRole, "canLeaveSpace") && currentUserRole === "Owner" && (
-          <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg">
-            <p className="text-sm text-amber-900 dark:text-amber-200">
-              <span className="font-medium">Note:</span> As the Owner, you cannot leave this space. Transfer ownership to another member first, or delete the space.
+          <div className="mt-6 p-4 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              <span className="font-medium">{t.ownerNote}:</span> {t.ownerCannotLeave}
             </p>
           </div>
         )}
+        
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <DialogTitle className="text-lg">{t.deleteSpace}</DialogTitle>
+                  <DialogDescription className="mt-2">
+                    {t.confirmDelete} <strong>"{name}"</strong>? {t.thisActionCannotBeUndone}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="flex gap-3 pt-4">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowDeleteDialog(false)}
+              >
+                {t.cancel}
+              </Button>
+              <Button
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                onClick={handleDelete}
+              >
+                {t.deleteSpace}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Archive Confirmation Dialog */}
+        <Dialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                  <Archive className="w-6 h-6" />
+                </div>
+                <div>
+                  <DialogTitle className="text-lg">{t.archiveSpace}</DialogTitle>
+                  <DialogDescription className="mt-2">
+                    {t.confirmArchive} <strong>"{name}"</strong>? {t.canUnarchiveLater}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="flex gap-3 pt-4">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowArchiveDialog(false)}
+              >
+                {t.cancel}
+              </Button>
+              <Button
+                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={handleArchive}
+              >
+                {t.archive}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Leave Confirmation Dialog */}
+        <Dialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                  <LogOut className="w-6 h-6" />
+                </div>
+                <div>
+                  <DialogTitle className="text-lg">{t.leaveSpace}</DialogTitle>
+                  <DialogDescription className="mt-2">
+                    {t.confirmLeave} <strong>"{name}"</strong>? {t.youWillLoseAccess}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="flex gap-3 pt-4">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowLeaveDialog(false)}
+              >
+                {t.cancel}
+              </Button>
+              <Button
+                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={handleLeave}
+              >
+                {t.leaveSpace}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

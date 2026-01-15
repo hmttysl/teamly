@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useActivity } from "@/lib/use-activity";
+import { useLanguage } from "@/lib/language-context";
 import {
   Popover,
   PopoverContent,
@@ -66,6 +67,7 @@ export function TaskDetailDrawer({ task, isOpen, onClose }: TaskDetailDrawerProp
   const [assignees, setAssignees] = useState<Assignee[]>(task?.assignees || (task?.assignee ? [task.assignee] : []));
   const [isAddingAssignee, setIsAddingAssignee] = useState(false);
   const { addActivity } = useActivity();
+  const { t } = useLanguage();
 
   const handleSubmitComment = () => {
     if (comment.trim() && task) {
@@ -166,10 +168,10 @@ export function TaskDetailDrawer({ task, isOpen, onClose }: TaskDetailDrawerProp
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="todo">To Do</SelectItem>
-                    <SelectItem value="inprogress">In Progress</SelectItem>
-                    <SelectItem value="review">Review</SelectItem>
-                    <SelectItem value="done">Done</SelectItem>
+                    <SelectItem value="todo">{t.todo}</SelectItem>
+                    <SelectItem value="inprogress">{t.inProgress}</SelectItem>
+                    <SelectItem value="review">{t.review}</SelectItem>
+                    <SelectItem value="done">{t.done}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -305,7 +307,7 @@ export function TaskDetailDrawer({ task, isOpen, onClose }: TaskDetailDrawerProp
                 {task.createdAt && (
                   <div className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5" />
-                    <span>Created {formatSecondaryDate(task.createdAt)}</span>
+                    <span>{t.created} {formatSecondaryDate(task.createdAt)}</span>
                   </div>
                 )}
                 {task.completedAt && (

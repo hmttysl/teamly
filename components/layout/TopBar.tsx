@@ -1,12 +1,36 @@
 "use client";
 
-import { Search, Bell, UserPlus } from "lucide-react";
+import { useState } from "react";
+import { Search, Bell, UserPlus, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { NotificationPopover } from "@/components/notifications/NotificationPopover";
 import { InviteMembersDialog } from "@/components/dialogs/InviteMembersDialog";
 import { ProfileMenu } from "@/components/layout/ProfileMenu";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { useLanguage } from "@/lib/language-context";
+import { Language as LangType } from "@/lib/translations";
+
+interface LanguageOption {
+  code: LangType;
+  name: string;
+  flag: string;
+}
+
+// Flag images (place in public/flags/)
+const languages: LanguageOption[] = [
+  { code: "en", name: "English", flag: "/flags/flag-gb.png" },
+  { code: "es", name: "Español", flag: "/flags/flag-es.png" },
+  { code: "pt", name: "Português", flag: "/flags/flag-pt.png" },
+  { code: "de", name: "Deutsch", flag: "/flags/flag-de.png" },
+  { code: "ja", name: "日本語", flag: "/flags/flag-jp.png" },
+  { code: "ko", name: "한국어", flag: "/flags/flag-kr.png" },
+];
 
 interface TopBarProps {
   activeView: "dashboard" | "space" | "inbox" | "calendar" | "settings" | "echo";
@@ -14,6 +38,11 @@ interface TopBarProps {
 }
 
 export function TopBar({ activeView, onProfileSettingsClick }: TopBarProps) {
+  const { language, setLanguage, t } = useLanguage();
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+
+  const selectedLang = languages.find(l => l.code === language) || languages[0];
+
   return (
     <div className="h-16 bg-white dark:bg-background border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between px-6">
       {/* Search */}
@@ -21,7 +50,7 @@ export function TopBar({ activeView, onProfileSettingsClick }: TopBarProps) {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
           <Input
-            placeholder="Search tasks, projects, or members..."
+            placeholder={t.search}
             className="pl-10 bg-gray-50 dark:bg-zinc-900 border-gray-200 dark:border-zinc-800 focus:bg-white dark:focus:bg-gray-800 dark:text-white dark:placeholder:text-gray-500"
           />
         </div>
@@ -29,6 +58,42 @@ export function TopBar({ activeView, onProfileSettingsClick }: TopBarProps) {
 
       {/* Right Section */}
       <div className="flex items-center gap-4">
+        {/* Language Selector */}
+        <Popover open={langMenuOpen} onOpenChange={setLangMenuOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="icon" className="relative flex items-center justify-center">
+              <img src={selectedLang.flag} alt={selectedLang.name} className="w-6 h-6 object-contain rounded-sm" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-48 p-2" align="end" sideOffset={8}>
+            <div className="space-y-1">
+              <p className="px-2 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                {t.language}
+              </p>
+              {languages.map((lang) => (
+                <button
+                  key={lang.code}
+                  onClick={() => {
+                    setLanguage(lang.code);
+                    setLangMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors ${
+                    language === lang.code
+                      ? "bg-[#6B2FD9]/10 text-[#6B2FD9] dark:bg-[#6B2FD9]/20"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800"
+                  }`}
+                >
+                  <img src={lang.flag} alt={lang.name} className="w-5 h-5 flex-shrink-0" />
+                  <span className="flex-1 text-left font-medium">{lang.name}</span>
+                  {language === lang.code && (
+                    <Check className="w-4 h-4 text-[#6B2FD9]" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+
         <ThemeToggle />
         
         <NotificationPopover>
