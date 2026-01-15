@@ -9,6 +9,7 @@ import { TaskDetailDrawer } from "@/components/tasks/TaskDetailDrawer";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { currentUser, spaces } from "@/lib/mock-data";
 import { useTasks } from "@/lib/use-tasks";
+import { useAuth } from "@/lib/auth-context";
 import { useActivity } from "@/lib/use-activity";
 import { addTask as addTaskToStore } from "@/lib/task-store";
 import { useEcho } from "@/lib/use-echo";
@@ -39,15 +40,19 @@ function getDayName(date: Date): string {
 }
 
 export function Dashboard() {
+  const { profile, user } = useAuth();
   const { kanban } = useTasks();
   const { activities, formatTimeAgo, getActionText, allActivities, addActivity } = useActivity(4);
+  
+  // Get user's first name from auth context
+  const userName = profile?.name?.split(' ')[0] || user?.email?.split('@')[0] || "there";
   const { addTask: addEchoTask, completedTasks: echoCompletedTasks, activeTasks: echoActiveTasks, getCompletedThisWeek: getEchoCompletedThisWeek } = useEcho();
   const [selectedTask, setSelectedTask] = useState<any | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [selectedSpaceId, setSelectedSpaceId] = useState<number | "echo">(spaces[0]?.id || 1);
+  const [selectedSpaceId, setSelectedSpaceId] = useState<number | "echo">(spaces.length > 0 ? spaces[0].id : "echo");
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const greeting = getGreeting();
 
@@ -279,7 +284,7 @@ export function Dashboard() {
           <div className="relative z-10 pr-48 md:pr-72">
             <div className="space-y-4">
               <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight tracking-tight max-w-xl">
-                Hi {currentUser.name.split(' ')[0]}! Ready to make today productive?
+                Hi {userName}! Ready to make today productive?
               </h2>
               
               <div className="space-y-2">
@@ -763,25 +768,27 @@ export function Dashboard() {
                         addActivity("create", newTaskTitle.trim(), { spaceId: 0, spaceName: "Echo Tasks" });
                       } else {
                         // Add to Space
-                        const selectedSpace = spaces.find(s => s.id === selectedSpaceId) || spaces[0];
-                        addTaskToStore(selectedSpaceId as number, "todo", {
-                          title: newTaskTitle.trim(),
-                          description: "",
-                          assignee: {
-                            name: currentUser.name,
-                            avatar: currentUser.avatar,
-                            initials: currentUser.initials,
-                          },
-                          assignees: [{
-                            name: currentUser.name,
-                            avatar: currentUser.avatar,
-                            initials: currentUser.initials,
-                          }],
-                          dueDate: new Date().toISOString(),
-                          createdAt: new Date().toISOString(),
-                          space: { name: selectedSpace.name, color: selectedSpace.color },
-                        });
-                        addActivity("create", newTaskTitle.trim(), { spaceId: selectedSpaceId as number, spaceName: selectedSpace.name });
+                        const selectedSpace = spaces.find(s => s.id === selectedSpaceId);
+                        if (selectedSpace) {
+                          addTaskToStore(selectedSpaceId as number, "todo", {
+                            title: newTaskTitle.trim(),
+                            description: "",
+                            assignee: {
+                              name: currentUser.name,
+                              avatar: currentUser.avatar,
+                              initials: currentUser.initials,
+                            },
+                            assignees: [{
+                              name: currentUser.name,
+                              avatar: currentUser.avatar,
+                              initials: currentUser.initials,
+                            }],
+                            dueDate: new Date().toISOString(),
+                            createdAt: new Date().toISOString(),
+                            space: { name: selectedSpace.name, color: selectedSpace.color },
+                          });
+                          addActivity("create", newTaskTitle.trim(), { spaceId: selectedSpaceId as number, spaceName: selectedSpace.name });
+                        }
                       }
                       setNewTaskTitle("");
                       setShowCreateTaskModal(false);
@@ -821,25 +828,27 @@ export function Dashboard() {
                       addActivity("create", newTaskTitle.trim(), { spaceId: 0, spaceName: "Echo Tasks" });
                     } else {
                       // Add to Space
-                      const selectedSpace = spaces.find(s => s.id === selectedSpaceId) || spaces[0];
-                      addTaskToStore(selectedSpaceId as number, "todo", {
-                        title: newTaskTitle.trim(),
-                        description: "",
-                        assignee: {
-                          name: currentUser.name,
-                          avatar: currentUser.avatar,
-                          initials: currentUser.initials,
-                        },
-                        assignees: [{
-                          name: currentUser.name,
-                          avatar: currentUser.avatar,
-                          initials: currentUser.initials,
-                        }],
-                        dueDate: new Date().toISOString(),
-                        createdAt: new Date().toISOString(),
-                        space: { name: selectedSpace.name, color: selectedSpace.color },
-                      });
-                      addActivity("create", newTaskTitle.trim(), { spaceId: selectedSpaceId as number, spaceName: selectedSpace.name });
+                      const selectedSpace = spaces.find(s => s.id === selectedSpaceId);
+                      if (selectedSpace) {
+                        addTaskToStore(selectedSpaceId as number, "todo", {
+                          title: newTaskTitle.trim(),
+                          description: "",
+                          assignee: {
+                            name: currentUser.name,
+                            avatar: currentUser.avatar,
+                            initials: currentUser.initials,
+                          },
+                          assignees: [{
+                            name: currentUser.name,
+                            avatar: currentUser.avatar,
+                            initials: currentUser.initials,
+                          }],
+                          dueDate: new Date().toISOString(),
+                          createdAt: new Date().toISOString(),
+                          space: { name: selectedSpace.name, color: selectedSpace.color },
+                        });
+                        addActivity("create", newTaskTitle.trim(), { spaceId: selectedSpaceId as number, spaceName: selectedSpace.name });
+                      }
                     }
                     setNewTaskTitle("");
                     setShowCreateTaskModal(false);

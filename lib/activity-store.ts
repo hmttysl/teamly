@@ -21,41 +21,8 @@ let activities: Activity[] = [];
 let nextActivityId = 1;
 let listeners: (() => void)[] = [];
 
-// Initialize with some mock activities
-const mockActivities: Activity[] = [
-  {
-    id: nextActivityId++,
-    type: "comment",
-    user: { name: "Sarah Jenkins", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100" },
-    taskTitle: "Design new landing page",
-    timestamp: new Date(Date.now() - 2 * 60 * 1000), // 2 minutes ago
-  },
-  {
-    id: nextActivityId++,
-    type: "move",
-    user: { name: "Marcus Aurelius", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100" },
-    taskTitle: "Email campaign",
-    fromColumn: "To Do",
-    toColumn: "In Progress",
-    timestamp: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
-  },
-  {
-    id: nextActivityId++,
-    type: "complete",
-    user: { name: "Alex Riviera", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100" },
-    taskTitle: "API Integration",
-    timestamp: new Date(Date.now() - 60 * 60 * 1000), // 1 hour ago
-  },
-  {
-    id: nextActivityId++,
-    type: "create",
-    user: { name: "John Cooper", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100" },
-    taskTitle: "User research docs",
-    timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3 hours ago
-  },
-];
-
-activities = [...mockActivities];
+// Empty activities for fresh account
+activities = [];
 
 function notifyListeners() {
   listeners.forEach(listener => listener());

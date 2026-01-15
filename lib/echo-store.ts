@@ -19,42 +19,13 @@ export interface EchoCategory {
 
 type EchoStoreListener = () => void;
 
-const INITIAL_TASKS: EchoTask[] = [
-  {
-    id: '1',
-    title: 'Architect neural design patterns',
-    description: 'Define the core atomic structures for the next-gen UI kit.',
-    priority: 'High',
-    status: 'In Progress',
-    categoryId: 'cat-2',
-    createdAt: '2h ago'
-  },
-  {
-    id: '2',
-    title: 'Refine typography scales',
-    description: 'Adjust line-heights and kerning for ultra-high resolution displays.',
-    priority: 'Medium',
-    status: 'To Do',
-    categoryId: 'cat-2',
-    createdAt: '4h ago'
-  },
-  {
-    id: '3',
-    title: 'Client feedback session',
-    description: 'Discuss the motion design explorations for the hero section.',
-    priority: 'Low',
-    status: 'Completed',
-    categoryId: 'cat-1',
-    createdAt: 'Yesterday',
-    completedAt: new Date().toISOString()
-  }
-];
+// Empty tasks for fresh account
+const INITIAL_TASKS: EchoTask[] = [];
 
+// Default categories for new users
 const INITIAL_CATEGORIES: EchoCategory[] = [
   { id: 'cat-1', name: 'Work', color: 'bg-indigo-500' },
-  { id: 'cat-2', name: 'Design', color: 'bg-purple-500' },
-  { id: 'cat-3', name: 'Personal', color: 'bg-emerald-500' },
-  { id: 'cat-4', name: 'Urgent', color: 'bg-rose-500' },
+  { id: 'cat-2', name: 'Personal', color: 'bg-emerald-500' },
 ];
 
 class EchoStore {

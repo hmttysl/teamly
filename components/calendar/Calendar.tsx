@@ -190,7 +190,7 @@ export function Calendar() {
   };
 
   const handleCompleteTask = (taskId: number) => {
-    completeTask(taskId);
+    // Task completion is handled elsewhere - just close the sidebar
     setSelectedTask(null);
   };
 

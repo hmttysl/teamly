@@ -22,12 +22,17 @@ interface SidebarProps {
 
 export function Sidebar({ activeView, activeSpaceId, onViewChange, inboxUnreadCount, spaces, onCreateSpace }: SidebarProps) {
   return (
-    <div className="w-64 bg-white dark:bg-background border-r border-gray-200 dark:border-zinc-800 flex flex-col h-full">
+    <div className="w-64 bg-white dark:bg-background border-r border-gray-200 dark:border-zinc-800 flex flex-col h-full overflow-visible">
       {/* Team Name */}
-      <div className="p-6 border-b border-gray-200 dark:border-zinc-800">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-semibold">T</span>
+      <div className="p-4 border-b border-gray-200 dark:border-zinc-800 overflow-visible relative z-10">
+        <div className="flex items-center gap-2">
+          <div className="relative w-12 h-12 flex-shrink-0 flex items-center justify-center">
+            <img 
+              src="/logo2.png" 
+              alt="Teamly Logo" 
+              className="absolute object-contain" 
+              style={{ width: '1000px', height: '1000px', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+            />
           </div>
           <div>
             <h1 className="font-semibold text-gray-900 dark:text-white">Teamly</h1>
