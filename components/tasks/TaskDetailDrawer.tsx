@@ -52,6 +52,10 @@ interface Task {
   createdAt?: string;
   completedAt?: string;
   status?: string;
+  space?: {
+    name: string;
+    color: string;
+  };
 }
 
 interface TaskDetailDrawerProps {

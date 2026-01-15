@@ -233,7 +233,7 @@ export function ProfileSettings() {
           <div className="p-6 border-b border-gray-200 dark:border-zinc-800">
             <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <Bell className="w-5 h-5 text-[#6B2FD9]" />
-              {t.notifications}
+              {t.notificationsSection}
             </h2>
           </div>
           <div className="p-6 space-y-4">
