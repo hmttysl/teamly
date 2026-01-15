@@ -193,9 +193,9 @@ export function Calendar() {
     return `${startStr} - ${endStr}`;
   };
 
-  const getTaskTime = (task: Task) => {
-    if (task.isAllDay) return "All day";
-    if (task.dueAt) {
+  const getTaskTime = (task: Task | EchoTask) => {
+    if ('isAllDay' in task && task.isAllDay) return "All day";
+    if ('dueAt' in task && task.dueAt) {
       const date = new Date(task.dueAt);
       return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
     }
@@ -437,11 +437,11 @@ export function Calendar() {
                 {selectedTask.title}
               </h2>
               <p className="text-gray-500 dark:text-zinc-400 text-sm mb-6">
-                {new Date(selectedTask.dueDate).toLocaleDateString("en-US", {
+                {selectedTask.dueDate ? new Date(selectedTask.dueDate).toLocaleDateString("en-US", {
                   weekday: "long",
                   month: "long",
                   day: "2-digit"
-                })} • {getTaskTime(selectedTask)}
+                }) : "No due date"} • {getTaskTime(selectedTask)}
               </p>
 
               {/* Status Badge */}
@@ -477,7 +477,7 @@ export function Calendar() {
                   Assignees
                 </h3>
                 <div className="space-y-3">
-                  {selectedTask.assignees?.map((assignee, idx) => (
+                  {'assignees' in selectedTask && selectedTask.assignees?.map((assignee: { name: string; avatar: string; initials: string }, idx: number) => (
                     <div key={idx} className="flex items-center gap-3">
                       <Avatar className="w-10 h-10">
                         <AvatarImage src={assignee.avatar} />
@@ -508,8 +508,8 @@ export function Calendar() {
                   Space
                 </h3>
                 <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-zinc-800/50 rounded-xl">
-                  <div className={`w-3 h-3 rounded-full ${selectedTask.space?.color || 'bg-gray-500'}`} />
-                  <span className="text-gray-900 dark:text-white text-sm">{selectedTask.space?.name || 'General'}</span>
+                  <div className={`w-3 h-3 rounded-full ${'space' in selectedTask ? selectedTask.space?.color : 'bg-purple-500'}`} />
+                  <span className="text-gray-900 dark:text-white text-sm">{'space' in selectedTask ? selectedTask.space?.name : 'Echo Tasks'}</span>
                 </div>
               </div>
 
@@ -520,7 +520,7 @@ export function Calendar() {
                   Reminder
                 </h3>
                 <p className="text-gray-600 dark:text-zinc-300 text-sm">
-                  {selectedTask.isAllDay ? "9:00 AM on due date" : "1 hour before"}
+                  {'isAllDay' in selectedTask && selectedTask.isAllDay ? "9:00 AM on due date" : "1 hour before"}
                 </p>
               </div>
 
@@ -528,7 +528,7 @@ export function Calendar() {
               <div className="space-y-3">
                 {selectedTask.status !== "done" && (
                   <Button 
-                    onClick={() => handleCompleteTask(selectedTask.id)}
+                    onClick={() => handleCompleteTask(typeof selectedTask.id === 'number' ? selectedTask.id : parseInt(selectedTask.id) || 0)}
                     className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                   >
                     <CheckCircle2 className="w-4 h-4 mr-2" />
