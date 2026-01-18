@@ -13,6 +13,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { useEcho, EchoTask, EchoCategory } from '@/lib/use-echo';
+import { useLanguage } from '@/lib/language-context';
 
 interface EchoTodoListProps {
   activeFilter: string;
@@ -29,6 +30,7 @@ const EchoTodoList: React.FC<EchoTodoListProps> = ({ activeFilter }) => {
     updateTaskDueDate,
     deleteCategory 
   } = useEcho();
+  const { t, language } = useLanguage();
 
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDate, setNewTaskDate] = useState('');
@@ -42,16 +44,26 @@ const EchoTodoList: React.FC<EchoTodoListProps> = ({ activeFilter }) => {
     setNewTaskDate('');
   };
 
+  // Language to locale mapping for date formatting
+  const localeMap: Record<string, string> = {
+    en: 'en-US',
+    es: 'es-ES',
+    pt: 'pt-BR',
+    de: 'de-DE',
+    ja: 'ja-JP',
+    ko: 'ko-KR'
+  };
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    if (date.toDateString() === today.toDateString()) return 'Today';
-    if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+    if (date.toDateString() === today.toDateString()) return t.todayLabel;
+    if (date.toDateString() === tomorrow.toDateString()) return t.tomorrowLabel;
     
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(localeMap[language] || 'en-US', { month: 'short', day: 'numeric' });
   };
 
   const filteredTasks = activeFilter === 'all' 
@@ -74,7 +86,7 @@ const EchoTodoList: React.FC<EchoTodoListProps> = ({ activeFilter }) => {
               type="text" 
               value={newTaskTitle}
               onChange={(e) => setNewTaskTitle(e.target.value)}
-              placeholder="Add a new task..."
+              placeholder={t.addNewTask}
               className="w-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#6B2FD9]/50 focus:border-[#6B2FD9] transition-all text-base font-medium placeholder:text-gray-400 dark:placeholder:text-zinc-600 text-gray-900 dark:text-white shadow-sm"
             />
           </div>
@@ -91,7 +103,7 @@ const EchoTodoList: React.FC<EchoTodoListProps> = ({ activeFilter }) => {
             disabled={!newTaskTitle.trim()}
             className="bg-[#6B2FD9] text-white px-5 py-4 rounded-xl text-sm font-semibold hover:bg-[#5a27b8] active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap"
           >
-            Create
+            {t.create}
           </button>
         </div>
       </form>
@@ -99,9 +111,9 @@ const EchoTodoList: React.FC<EchoTodoListProps> = ({ activeFilter }) => {
       {/* Task List Header */}
       <div className="flex items-center justify-between px-1">
         <h3 className="text-xs font-semibold text-gray-500 dark:text-zinc-500 uppercase tracking-wide">
-          Active Tasks {activeFilter !== 'all' && <span className="text-[#6B2FD9] ml-1">/ {categories.find(c => c.id === activeFilter)?.name}</span>}
+          {t.activeTasks} {activeFilter !== 'all' && <span className="text-[#6B2FD9] ml-1">/ {categories.find(c => c.id === activeFilter)?.name}</span>}
         </h3>
-        <span className="text-xs font-medium text-gray-400 dark:text-zinc-600">{activeTasks.length} items</span>
+        <span className="text-xs font-medium text-gray-400 dark:text-zinc-600">{activeTasks.length} {t.items.toLowerCase()}</span>
       </div>
 
       {/* Task List */}
@@ -117,6 +129,7 @@ const EchoTodoList: React.FC<EchoTodoListProps> = ({ activeFilter }) => {
             onDeleteCategory={deleteCategory}
             onDateChange={updateTaskDueDate}
             formatDate={formatDate}
+            t={t}
           />
         ))}
       </div>
@@ -124,7 +137,7 @@ const EchoTodoList: React.FC<EchoTodoListProps> = ({ activeFilter }) => {
       {activeTasks.length === 0 && (
         <div className="py-12 text-center bg-gray-50 dark:bg-zinc-900/50 border border-dashed border-gray-200 dark:border-zinc-800 rounded-xl">
           <CheckCircle2 size={40} className="text-gray-300 dark:text-zinc-700 mx-auto mb-3" />
-          <p className="text-gray-500 dark:text-zinc-500 font-medium">All tasks completed!</p>
+          <p className="text-gray-500 dark:text-zinc-500 font-medium">{t.allTasksCompleted}</p>
         </div>
       )}
 
@@ -140,7 +153,7 @@ const EchoTodoList: React.FC<EchoTodoListProps> = ({ activeFilter }) => {
                 <Check size={16} strokeWidth={3} />
               </div>
               <span className="text-sm font-semibold text-gray-600 dark:text-zinc-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-                Completed ({completedTasks.length})
+                {t.completedLabel} ({completedTasks.length})
               </span>
             </div>
             <div className="text-gray-400 dark:text-zinc-600 group-hover:text-gray-600 dark:group-hover:text-white transition-all">
@@ -161,6 +174,7 @@ const EchoTodoList: React.FC<EchoTodoListProps> = ({ activeFilter }) => {
                   onDeleteCategory={deleteCategory}
                   onDateChange={updateTaskDueDate}
                   formatDate={formatDate}
+                  t={t}
                 />
               ))}
             </div>
@@ -172,17 +186,17 @@ const EchoTodoList: React.FC<EchoTodoListProps> = ({ activeFilter }) => {
       <div className="flex items-center justify-between px-5 py-4 bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 mt-6">
         <div className="flex items-center gap-8">
           <div className="flex flex-col">
-            <span className="text-xs font-medium text-gray-400 dark:text-zinc-500 uppercase">Pending</span>
+            <span className="text-xs font-medium text-gray-400 dark:text-zinc-500 uppercase">{t.pending}</span>
             <span className="text-2xl font-bold text-gray-900 dark:text-white">{activeTasks.length}</span>
           </div>
           <div className="h-10 w-px bg-gray-200 dark:bg-zinc-800"></div>
           <div className="flex flex-col">
-            <span className="text-xs font-medium text-gray-400 dark:text-zinc-500 uppercase">Done</span>
+            <span className="text-xs font-medium text-gray-400 dark:text-zinc-500 uppercase">{t.done}</span>
             <span className="text-2xl font-bold text-emerald-500">{completedTasks.length}</span>
           </div>
           <div className="h-10 w-px bg-gray-200 dark:bg-zinc-800"></div>
           <div className="flex flex-col">
-            <span className="text-xs font-medium text-gray-400 dark:text-zinc-500 uppercase">Progress</span>
+            <span className="text-xs font-medium text-gray-400 dark:text-zinc-500 uppercase">{t.progress}</span>
             <span className="text-2xl font-bold text-[#6B2FD9]">
               {tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0}%
             </span>
@@ -190,7 +204,7 @@ const EchoTodoList: React.FC<EchoTodoListProps> = ({ activeFilter }) => {
         </div>
         <div className="flex items-center gap-2 px-4 py-2 bg-[#6B2FD9]/10 rounded-full">
           <div className="w-2 h-2 rounded-full bg-[#6B2FD9] animate-pulse"></div>
-          <span className="text-xs font-semibold text-[#6B2FD9]">Active</span>
+          <span className="text-xs font-semibold text-[#6B2FD9]">{t.active}</span>
         </div>
       </div>
     </div>
@@ -206,7 +220,8 @@ const TaskItem: React.FC<{
   onDeleteCategory: (categoryId: string) => void;
   onDateChange: (taskId: string, date: string | undefined) => void;
   formatDate: (dateStr: string) => string;
-}> = ({ task, categories, onToggle, onDelete, onCategoryChange, onDeleteCategory, onDateChange, formatDate }) => {
+  t: Record<string, string>;
+}> = ({ task, categories, onToggle, onDelete, onCategoryChange, onDeleteCategory, onDateChange, formatDate, t }) => {
   const isCompleted = task.status === 'Completed';
   const category = categories.find(c => c.id === task.categoryId);
   const [showCatPicker, setShowCatPicker] = useState(false);
@@ -254,7 +269,7 @@ const TaskItem: React.FC<{
             }`}
           >
             <Calendar size={12} />
-            <span>{task.dueDate ? formatDate(task.dueDate) : 'Date'}</span>
+            <span>{task.dueDate ? formatDate(task.dueDate) : t.dateLabel}</span>
           </button>
           
           {showDatePicker && (
@@ -279,7 +294,7 @@ const TaskItem: React.FC<{
                     }}
                     className="w-full mt-2 text-xs text-rose-500 hover:text-rose-600 font-medium"
                   >
-                    Remove date
+                    {t.removeDate}
                   </button>
                 )}
               </div>
@@ -311,7 +326,7 @@ const TaskItem: React.FC<{
             <>
               <div className="fixed inset-0 z-30" onClick={() => setShowCatPicker(false)} />
               <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl shadow-lg z-40 p-2 animate-in slide-in-from-top-2 duration-200">
-                <div className="px-3 py-2 text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase">Category</div>
+                <div className="px-3 py-2 text-xs font-semibold text-gray-400 dark:text-zinc-500 uppercase">{t.category}</div>
                 <div className="space-y-1">
                   {categories.map(cat => (
                     <div 

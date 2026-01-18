@@ -48,26 +48,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Initialize auth state
   useEffect(() => {
+    let isMounted = true;
+    
+    // Safety timeout - don't keep loading forever
+    const safetyTimeout = setTimeout(() => {
+      if (isMounted && isLoading) {
+        console.warn("Auth loading timeout - proceeding without auth");
+        setIsLoading(false);
+      }
+    }, 5000);
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!isMounted) return;
+      
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchProfile(session.user.id).then(setProfile);
+        fetchProfile(session.user.id).then((profile) => {
+          if (isMounted) setProfile(profile);
+        });
       }
       setIsLoading(false);
+    }).catch((err) => {
+      console.error("Error getting session:", err);
+      if (isMounted) setIsLoading(false);
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!isMounted) return;
+        
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
           const profile = await fetchProfile(session.user.id);
-          setProfile(profile);
+          if (isMounted) setProfile(profile);
         } else {
           setProfile(null);
         }
@@ -75,7 +94,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      clearTimeout(safetyTimeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Sign up with email and password

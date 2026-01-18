@@ -42,7 +42,7 @@ function getDayName(date: Date): string {
 
 export function Dashboard() {
   const { profile, user } = useAuth();
-  const { kanban } = useTasks();
+  const { kanban, updateTask } = useTasks();
   const { activities, formatTimeAgo, getActionText, allActivities, addActivity } = useActivity(4);
   const { t } = useLanguage();
   
@@ -259,6 +259,15 @@ export function Dashboard() {
   const handleCloseDrawer = () => {
     setIsDrawerOpen(false);
     setTimeout(() => setSelectedTask(null), 300);
+  };
+
+  // Handle task updates from detail drawer
+  const handleTaskUpdate = (taskId: number, updates: any) => {
+    updateTask(taskId, updates);
+    // Update selected task if it's the one being edited
+    if (selectedTask && selectedTask.id === taskId) {
+      setSelectedTask((prev: any) => prev ? { ...prev, ...updates } : null);
+    }
   };
 
   const scroll = (direction: "left" | "right") => {
@@ -536,7 +545,7 @@ export function Dashboard() {
                 onClick={() => setShowHistoryModal(true)}
                 className="text-sm text-[#6B2FD9] hover:text-[#5a27b8] font-medium"
               >
-                View History
+                {t.viewHistory}
               </button>
             </div>
             
@@ -565,7 +574,7 @@ export function Dashboard() {
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No recent activity</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">{t.noRecentActivity}</p>
               )}
             </div>
           </div>
@@ -634,6 +643,7 @@ export function Dashboard() {
         task={selectedTask}
         isOpen={isDrawerOpen}
         onClose={handleCloseDrawer}
+        onTaskUpdate={handleTaskUpdate}
       />
 
       {/* Activity History Modal */}
@@ -647,8 +657,8 @@ export function Dashboard() {
                   <History className="w-5 h-5 text-[#6B2FD9]" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Activity History</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">All recent activities</p>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t.activityHistory}</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t.allRecentActivities}</p>
                 </div>
               </div>
               <Button 
@@ -698,7 +708,7 @@ export function Dashboard() {
               ) : (
                 <div className="text-center py-8">
                   <History className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
-                  <p className="text-gray-500 dark:text-gray-400">No activity history yet</p>
+                  <p className="text-gray-500 dark:text-gray-400">{t.noActivityHistory}</p>
                 </div>
               )}
             </div>
@@ -710,7 +720,7 @@ export function Dashboard() {
                 className="w-full"
                 onClick={() => setShowHistoryModal(false)}
               >
-                Close
+                {t.close}
               </Button>
             </div>
           </div>
@@ -727,7 +737,7 @@ export function Dashboard() {
                 <div className="p-2 bg-[#6B2FD9]/10 dark:bg-[#6B2FD9]/20 rounded-lg">
                   <Plus className="w-5 h-5 text-[#6B2FD9]" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Quick Create Task</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t.quickCreateTask}</h3>
               </div>
               <Button 
                 variant="ghost" 
@@ -746,7 +756,7 @@ export function Dashboard() {
               {/* Destination Selector */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Destination
+                  {t.destination}
                 </label>
                 <div className="grid grid-cols-1 gap-2">
                   {/* Echo Option */}
@@ -766,7 +776,7 @@ export function Dashboard() {
                         ? "text-[#6B2FD9] dark:text-[#a78bfa]" 
                         : "text-gray-700 dark:text-gray-300"
                     }`}>
-                      Echo Tasks
+                      {t.echoTasks}
                     </span>
                     {selectedSpaceId === "echo" && (
                       <CheckCircle2 className="w-4 h-4 text-[#6B2FD9] dark:text-[#a78bfa] ml-auto" />
@@ -803,10 +813,10 @@ export function Dashboard() {
               {/* Task Title */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Task Title
+                  {t.taskTitleLabel}
                 </label>
                 <Input
-                  placeholder="Enter task title..."
+                  placeholder={t.enterTaskTitle}
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
                   onKeyDown={(e) => {
@@ -864,7 +874,7 @@ export function Dashboard() {
                   setNewTaskTitle("");
                 }}
               >
-                Cancel
+                {t.cancel}
               </Button>
               <Button 
                 className="flex-1 bg-[#6B2FD9] hover:bg-[#5a27b8]"
@@ -874,7 +884,7 @@ export function Dashboard() {
                     if (selectedSpaceId === "echo") {
                       // Add to Echo
                       addEchoTask(newTaskTitle.trim());
-                      addActivity("create", newTaskTitle.trim(), { spaceId: 0, spaceName: "Echo Tasks" });
+                      addActivity("create", newTaskTitle.trim(), { spaceId: 0, spaceName: t.echoTasks });
                     } else {
                       // Add to Space
                       const selectedSpace = spaces.find(s => s.id === selectedSpaceId);
@@ -904,7 +914,7 @@ export function Dashboard() {
                   }
                 }}
               >
-                Create Task
+                {t.createTask}
               </Button>
             </div>
           </div>

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings as SettingsIcon, Palette, Users, Trash2, LogOut, Archive, Check, AlertTriangle } from "lucide-react";
+import { Settings as SettingsIcon, Palette, Users, Trash2, LogOut, Archive, Check, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type Role, hasPermission } from "@/lib/permissions";
 import { useLanguage } from "@/lib/language-context";
+import { useAuth } from "@/lib/auth-context";
+import { supabase } from "@/lib/supabase";
 import {
   Dialog,
   DialogContent,
@@ -17,15 +19,15 @@ import {
 interface SpaceSettingsProps {
   spaceName?: string;
   spaceId?: number;
+  spaceDbId?: string;
   spaceColor?: string;
+  spaceDescription?: string;
   onLeaveSpace?: (spaceId: number) => void;
   onDeleteSpace?: (spaceId: number) => void;
   onArchiveSpace?: (spaceId: number) => void;
   onUpdateSpace?: (spaceId: number, updates: { name?: string; description?: string; color?: string }) => void;
+  onDescriptionChange?: (description: string) => void;
 }
-
-// Current user's role in this space (mock - in real app would come from API)
-const currentUserRole: Role = "Owner";
 
 const colorOptions = [
   { name: "Purple", class: "bg-purple-500" },
@@ -41,21 +43,26 @@ const colorOptions = [
 export function SpaceSettings({ 
   spaceName = "", 
   spaceId,
+  spaceDbId,
   spaceColor = "bg-purple-500",
+  spaceDescription = "",
   onLeaveSpace,
   onDeleteSpace,
   onArchiveSpace,
   onUpdateSpace,
+  onDescriptionChange,
 }: SpaceSettingsProps) {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [name, setName] = useState(spaceName);
-  const [description, setDescription] = useState("Collaborate on tasks and projects");
+  const [description, setDescription] = useState(spaceDescription);
   const [selectedColor, setSelectedColor] = useState(spaceColor);
   const [saved, setSaved] = useState(false);
   const [colorSaved, setColorSaved] = useState(false);
   const [anyoneCanInvite, setAnyoneCanInvite] = useState(true);
   const [membersCanCreateTasks, setMembersCanCreateTasks] = useState(true);
   const [permissionsSaved, setPermissionsSaved] = useState(false);
+  const [currentUserRole, setCurrentUserRole] = useState<Role>("Teammate");
   
   // Dialog states
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -71,20 +78,112 @@ export function SpaceSettings({
     setSelectedColor(spaceColor);
   }, [spaceColor]);
   
-  const handleSaveDetails = () => {
-    if (spaceId !== undefined && onUpdateSpace) {
-      onUpdateSpace(spaceId, { name, description });
+  useEffect(() => {
+    setDescription(spaceDescription);
+  }, [spaceDescription]);
+  
+  // Fetch current user's role in this space
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (!spaceDbId || !user) return;
+      
+      const { data, error } = await supabase
+        .from("space_members")
+        .select("role")
+        .eq("space_id", spaceDbId)
+        .eq("user_id", user.id)
+        .single();
+      
+      if (!error && data) {
+        setCurrentUserRole(data.role as Role);
+      }
+    };
+    
+    fetchUserRole();
+  }, [spaceDbId, user]);
+  
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const handleSaveDetails = async () => {
+    if (!spaceDbId) {
+      setSaveError("Space ID not found");
+      return;
+    }
+    
+    setSaving(true);
+    setSaveError(null);
+    
+    // Set a safety timeout to prevent infinite saving state
+    const safetyTimeout = setTimeout(() => {
+      setSaving(false);
+      setSaveError("Request timed out. Please check your internet connection.");
+    }, 8000);
+    
+    try {
+      const { data, error } = await supabase
+        .from("spaces")
+        .update({ 
+          name,
+          description,
+          updated_at: new Date().toISOString() 
+        })
+        .eq("id", spaceDbId)
+        .select()
+        .single();
+      
+      clearTimeout(safetyTimeout);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Update description in parent component
+      if (onDescriptionChange) {
+        onDescriptionChange(description);
+      }
+      
+      // Also call parent callback if provided
+      if (spaceId !== undefined && onUpdateSpace) {
+        onUpdateSpace(spaceId, { name, description });
+      }
+      
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    } catch (err: any) {
+      clearTimeout(safetyTimeout);
+      console.error("Error saving space details:", err);
+      setSaveError(err.message || "Failed to save");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleColorChange = (color: string) => {
+  const handleColorChange = async (color: string) => {
     setSelectedColor(color);
-    if (spaceId !== undefined && onUpdateSpace) {
-      onUpdateSpace(spaceId, { color });
+    
+    if (!spaceDbId) return;
+    
+    try {
+      const { error } = await supabase
+        .from("spaces")
+        .update({ 
+          color,
+          updated_at: new Date().toISOString() 
+        })
+        .eq("id", spaceDbId);
+      
+      if (error) throw error;
+      
+      // Also call parent callback if provided
+      if (spaceId !== undefined && onUpdateSpace) {
+        onUpdateSpace(spaceId, { color });
+      }
+      
       setColorSaved(true);
       setTimeout(() => setColorSaved(false), 1500);
+    } catch (err) {
+      console.error("Error saving color:", err);
     }
   };
   
@@ -182,11 +281,20 @@ export function SpaceSettings({
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
+            {saveError && (
+              <p className="text-sm text-red-500 mb-2">{saveError}</p>
+            )}
             <Button 
               className="bg-[#6B2FD9] hover:bg-[#5a27b8] gap-2"
               onClick={handleSaveDetails}
+              disabled={saving}
             >
-              {saved ? (
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {t.saving || "Saving..."}
+                </>
+              ) : saved ? (
                 <>
                   <Check className="w-4 h-4" />
                   {t.saved}

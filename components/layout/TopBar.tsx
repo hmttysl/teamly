@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Bell, UserPlus, Check } from "lucide-react";
+import { Search, Bell, UserPlus, Check, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { NotificationPopover } from "@/components/notifications/NotificationPopover";
@@ -61,9 +61,24 @@ export function TopBar({ activeView, onProfileSettingsClick }: TopBarProps) {
         {/* Language Selector */}
         <Popover open={langMenuOpen} onOpenChange={setLangMenuOpen}>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative flex items-center justify-center">
-              <img src={selectedLang.flag} alt={selectedLang.name} className="w-6 h-6 object-contain rounded-sm" />
-            </Button>
+            <button
+              className="flex items-center gap-1.5 px-2 py-1.5 rounded-full 
+                         bg-gray-100/80 dark:bg-white/[0.08] 
+                         border border-gray-200/50 dark:border-white/[0.08]
+                         hover:bg-gray-200/80 dark:hover:bg-white/[0.12]
+                         hover:border-gray-300/50 dark:hover:border-white/[0.15]
+                         transition-all duration-200 cursor-pointer
+                         shadow-sm hover:shadow"
+            >
+              <div className="w-5 h-5 rounded-full overflow-hidden ring-1 ring-black/5 dark:ring-white/10 shadow-inner">
+                <img 
+                  src={selectedLang.flag} 
+                  alt={selectedLang.name} 
+                  className="w-full h-full object-cover" 
+                />
+              </div>
+              <ChevronDown className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+            </button>
           </PopoverTrigger>
           <PopoverContent className="w-48 p-2" align="end" sideOffset={8}>
             <div className="space-y-1">

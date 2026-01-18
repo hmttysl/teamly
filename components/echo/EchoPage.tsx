@@ -69,7 +69,7 @@ const EchoPage: React.FC = () => {
             {showFilterMenu && (
               <div className="absolute right-0 top-full mt-3 w-64 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-50 p-4 animate-in zoom-in-95 duration-200">
                 <div className="flex items-center justify-between mb-4 px-2">
-                  <span className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">CATEGORIES</span>
+                  <span className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">{t.categories}</span>
                   <button onClick={() => { setShowAddCategory(true); setShowFilterMenu(false); }} className="text-[#6B2FD9] hover:text-[#5a27b8]">
                     <Plus size={16} />
                   </button>
@@ -123,7 +123,7 @@ const EchoPage: React.FC = () => {
                 <input 
                   autoFocus
                   type="text" 
-                  placeholder="e.g. Architecture"
+                  placeholder={t.egArchitecture}
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}

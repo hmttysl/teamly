@@ -35,12 +35,44 @@ export function useTasks() {
     addTask(1, column, task);
   }, []);
 
+  // Update task - finds task in any space and updates it
+  const updateTaskGlobal = useCallback((taskId: number, updates: Partial<Task>) => {
+    // Find which space the task is in
+    const store = getTaskStore();
+    for (const [spaceIdStr, kanban] of Object.entries(store.spaceKanbans)) {
+      const spaceId = parseInt(spaceIdStr);
+      const columns: KanbanColumn[] = ["todo", "inProgress", "review", "done"];
+      for (const column of columns) {
+        const task = kanban[column].find(t => t.id === taskId);
+        if (task) {
+          // If status is changing, we need to move the task
+          if (updates.status) {
+            const statusToColumn: Record<string, KanbanColumn> = {
+              todo: "todo",
+              inprogress: "inProgress",
+              inProgress: "inProgress",
+              review: "review",
+              done: "done",
+            };
+            const newColumn = statusToColumn[updates.status];
+            if (newColumn && newColumn !== column) {
+              moveTask(spaceId, taskId, column, newColumn);
+            }
+          }
+          updateTask(spaceId, taskId, updates);
+          return;
+        }
+      }
+    }
+  }, []);
+
   return {
     // Combined kanban from all spaces
     kanban: getKanbanTasks(),
     allTasks: getAllTasks(),
     completedThisWeek: getCompletedThisWeek(),
     addTask: addTaskToDefault,
+    updateTask: updateTaskGlobal,
   };
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Plus, GripVertical, MoreHorizontal, Trash2, Pencil, X, Calendar, Check } from "lucide-react";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { Button } from "@/components/ui/button";
@@ -181,7 +181,7 @@ interface KanbanBoardProps {
 }
 
 export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-purple-500" }: KanbanBoardProps) {
-  const { kanban, moveTask, addTask, deleteTask } = useSpaceTasks(spaceId);
+  const { kanban, moveTask, addTask, updateTask, deleteTask } = useSpaceTasks(spaceId);
   const { addActivity } = useActivity();
   const { user, profile } = useAuth();
   const { t } = useLanguage();
@@ -217,12 +217,17 @@ export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-purple-500" }
   const [selectedAssignees, setSelectedAssignees] = useState<{id: number; name: string; avatar: string; initials: string; email: string}[]>([]);
   const [assignSelf, setAssignSelf] = useState(true);
 
-  const [columnTitles, setColumnTitles] = useState({
-    todo: t.todo,
-    inProgress: t.inProgress,
-    review: t.review,
-    done: t.done,
-  });
+  // Custom column titles - only stores user-edited titles
+  const [customColumnTitles, setCustomColumnTitles] = useState<Partial<Record<KanbanColumn, string>>>({});
+  
+  // Computed column titles - uses custom if set, otherwise translation
+  const columnTitles = useMemo(() => ({
+    todo: customColumnTitles.todo || t.todo,
+    inProgress: customColumnTitles.inProgress || t.inProgress,
+    review: customColumnTitles.review || t.review,
+    done: customColumnTitles.done || t.done,
+  }), [customColumnTitles, t]);
+  
   const [editingColumn, setEditingColumn] = useState<KanbanColumn | null>(null);
   const [editingTitleValue, setEditingTitleValue] = useState("");
 
@@ -407,7 +412,51 @@ export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-purple-500" }
 
   const handleTitleChange = (column: KanbanColumn, newTitle: string) => {
     if (newTitle.trim()) {
-      setColumnTitles((prev) => ({ ...prev, [column]: newTitle }));
+      // Check if the new title is the same as the translation (reset to default)
+      const defaultTitle = t[column];
+      if (newTitle.trim() === defaultTitle) {
+        // Remove custom title, use translation
+        setCustomColumnTitles((prev) => {
+          const updated = { ...prev };
+          delete updated[column];
+          return updated;
+        });
+      } else {
+        // Store custom title
+        setCustomColumnTitles((prev) => ({ ...prev, [column]: newTitle.trim() }));
+      }
+    }
+  };
+
+  // Handle task updates from detail drawer
+  const handleTaskUpdate = (taskId: number, updates: Partial<Task>) => {
+    // Find which column the task is in
+    for (const column of Object.keys(kanban) as KanbanColumn[]) {
+      const taskIndex = kanban[column].findIndex(t => t.id === taskId);
+      if (taskIndex !== -1) {
+        // If status changed, move the task
+        if (updates.status) {
+          const statusToColumn: Record<string, KanbanColumn> = {
+            todo: "todo",
+            inprogress: "inProgress",
+            review: "review",
+            done: "done",
+          };
+          const newColumn = statusToColumn[updates.status];
+          if (newColumn && newColumn !== column) {
+            moveTask(taskId, column, newColumn);
+          }
+        }
+        
+        // Persist all other changes to the task store
+        updateTask(taskId, updates);
+        break;
+      }
+    }
+    
+    // Update selected task if it's the one being edited
+    if (selectedTask && selectedTask.id === taskId) {
+      setSelectedTask(prev => prev ? { ...prev, ...updates } : null);
     }
   };
 
@@ -715,6 +764,7 @@ export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-purple-500" }
         task={selectedTask}
         isOpen={isDrawerOpen}
         onClose={handleCloseDrawer}
+        onTaskUpdate={handleTaskUpdate}
       />
     </div>
   );

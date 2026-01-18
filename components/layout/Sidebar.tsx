@@ -7,10 +7,18 @@ import { CreateSpaceDialog } from "@/components/dialogs/CreateSpaceDialog";
 import { useLanguage } from "@/lib/language-context";
 import { useAuth } from "@/lib/auth-context";
 
+interface SpaceMember {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+}
+
 interface Space {
   id: number;
+  dbId?: string;
   name: string;
   color: string;
+  members?: SpaceMember[];
 }
 
 interface SidebarProps {
@@ -136,20 +144,52 @@ export function Sidebar({ activeView, activeSpaceId, onViewChange, inboxUnreadCo
             </CreateSpaceDialog>
           </div>
           <div className="space-y-1">
-            {spaces.map((space) => (
-              <button
-                key={space.id}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-left ${
-                  activeView === "space" && activeSpaceId === space.id
-                    ? "bg-[#6B2FD9]/10 dark:bg-[#6B2FD9]/20 text-[#6B2FD9]"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
-                onClick={() => onViewChange("space", space.id)}
-              >
-                <div className={`w-2 h-2 rounded-full ${space.color} flex-shrink-0`}></div>
-                <span className="text-sm">{space.name}</span>
-              </button>
-            ))}
+            {spaces.map((space) => {
+              const members = space.members || [];
+              const displayMembers = members.slice(0, 3);
+              const extraCount = members.length > 3 ? members.length - 3 : 0;
+              
+              return (
+                <button
+                  key={space.id}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-left ${
+                    activeView === "space" && activeSpaceId === space.id
+                      ? "bg-[#6B2FD9]/10 dark:bg-[#6B2FD9]/20 text-[#6B2FD9]"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  }`}
+                  onClick={() => onViewChange("space", space.id)}
+                >
+                  <div className={`w-2 h-2 rounded-full ${space.color} flex-shrink-0`}></div>
+                  <span className="text-sm flex-1 truncate">{space.name}</span>
+                  
+                  {/* Member Avatars */}
+                  {displayMembers.length > 0 && (
+                    <div className="flex -space-x-1.5">
+                      {displayMembers.map((member) => (
+                        <div
+                          key={member.id}
+                          className="w-6 h-6 rounded-full border-[2px] border-white dark:border-zinc-900 overflow-hidden bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center shadow-sm"
+                          title={member.name}
+                        >
+                          {member.avatar_url ? (
+                            <img src={member.avatar_url} alt={member.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-[8px] text-white font-medium">
+                              {member.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                      {extraCount > 0 && (
+                        <div className="w-6 h-6 rounded-full border-[2px] border-white dark:border-zinc-900 bg-gray-200 dark:bg-zinc-700 flex items-center justify-center shadow-sm">
+                          <span className="text-[8px] text-gray-600 dark:text-gray-300 font-medium">+{extraCount}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 

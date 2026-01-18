@@ -30,6 +30,27 @@ export interface Task {
 
 export type KanbanColumn = "todo" | "inProgress" | "review" | "done";
 
+// Status categories for Dashboard statistics
+// This allows custom column names while maintaining correct stats
+export type StatusCategory = "pending" | "active" | "reviewing" | "completed";
+
+export const STATUS_CATEGORIES: Record<KanbanColumn, StatusCategory> = {
+  todo: "pending",        // Waiting to be started
+  inProgress: "active",   // Currently being worked on
+  review: "reviewing",    // In review/testing phase
+  done: "completed",      // Finished
+};
+
+// Get category for a status
+export function getStatusCategory(status: KanbanColumn): StatusCategory {
+  return STATUS_CATEGORIES[status];
+}
+
+// Check if a status belongs to a category
+export function isInCategory(status: KanbanColumn, category: StatusCategory): boolean {
+  return STATUS_CATEGORIES[status] === category;
+}
+
 export interface SpaceKanban {
   todo: Task[];
   inProgress: Task[];
@@ -141,6 +162,39 @@ export function getCompletedThisWeek(): number {
   });
 
   return count;
+}
+
+// Get task counts by category (for Dashboard stats)
+export function getTaskCountsByCategory(): Record<StatusCategory, number> {
+  const counts: Record<StatusCategory, number> = {
+    pending: 0,
+    active: 0,
+    reviewing: 0,
+    completed: 0,
+  };
+
+  Object.values(taskStore.spaceKanbans).forEach(kanban => {
+    counts.pending += kanban.todo.length;
+    counts.active += kanban.inProgress.length;
+    counts.reviewing += kanban.review.length;
+    counts.completed += kanban.done.length;
+  });
+
+  return counts;
+}
+
+// Get tasks by category
+export function getTasksByCategory(category: StatusCategory): Task[] {
+  const tasks: Task[] = [];
+  
+  Object.values(taskStore.spaceKanbans).forEach(kanban => {
+    if (category === "pending") tasks.push(...kanban.todo);
+    else if (category === "active") tasks.push(...kanban.inProgress);
+    else if (category === "reviewing") tasks.push(...kanban.review);
+    else if (category === "completed") tasks.push(...kanban.done);
+  });
+
+  return tasks;
 }
 
 // Initialize kanban for a new space

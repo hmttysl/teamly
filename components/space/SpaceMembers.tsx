@@ -59,9 +59,19 @@ export function SpaceMembers({ spaceName, spaceId }: SpaceMembersProps) {
 
   // Fetch members from Supabase
   const fetchMembers = useCallback(async () => {
-    if (!spaceId) return;
+    if (!spaceId) {
+      setLoading(false);
+      return;
+    }
     
     setLoading(true);
+    
+    // Safety timeout - don't stay loading forever
+    const safetyTimeout = setTimeout(() => {
+      setLoading(false);
+      setError("Request timed out. Please refresh the page.");
+    }, 10000);
+    
     try {
       // Get space members with their profile info
       const { data: membersData, error: membersError } = await supabase
@@ -79,6 +89,8 @@ export function SpaceMembers({ spaceName, spaceId }: SpaceMembersProps) {
           )
         `)
         .eq("space_id", spaceId);
+
+      clearTimeout(safetyTimeout);
 
       if (membersError) throw membersError;
 
@@ -106,8 +118,11 @@ export function SpaceMembers({ spaceName, spaceId }: SpaceMembersProps) {
         }
       }
 
-      // Get pending invites
-      const { data: invitesData, error: invitesError } = await supabase
+      // Set loading false immediately after members are loaded
+      setLoading(false);
+
+      // Get pending invites in background (don't block UI)
+      supabase
         .from("space_invites")
         .select(`
           id,
@@ -120,25 +135,29 @@ export function SpaceMembers({ spaceName, spaceId }: SpaceMembersProps) {
           )
         `)
         .eq("space_id", spaceId)
-        .eq("status", "pending");
+        .eq("status", "pending")
+        .then(({ data: invitesData, error: invitesError }) => {
+          if (!invitesError && invitesData) {
+            const formattedInvites: PendingInvite[] = invitesData.map((inv: any) => ({
+              id: inv.id,
+              email: inv.profiles?.email || "Unknown",
+              status: inv.status,
+              createdAt: inv.created_at,
+            }));
+            setPendingInvites(formattedInvites);
+          }
+        })
+        .catch(() => {
+          // Ignore invite errors - they're optional
+        });
 
-      if (!invitesError && invitesData) {
-        const formattedInvites: PendingInvite[] = invitesData.map((inv: any) => ({
-          id: inv.id,
-          email: inv.profiles?.email || "Unknown",
-          status: inv.status,
-          createdAt: inv.created_at,
-        }));
-        setPendingInvites(formattedInvites);
-      }
-
-      // Generate or get invite link
-      await generateInviteLink();
+      // Generate invite link in background
+      generateInviteLink().catch(() => {});
 
     } catch (err: any) {
+      clearTimeout(safetyTimeout);
       console.error("Error fetching members:", err);
       setError(err.message);
-    } finally {
       setLoading(false);
     }
   }, [spaceId, user?.id]);

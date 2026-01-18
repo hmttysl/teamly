@@ -12,12 +12,31 @@ import EchoPage from "@/components/echo/EchoPage";
 import { LoginPage } from "@/components/auth/LoginPage";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/lib/supabase";
+import TeamlyLoader from "@/components/ui/TeamlyLoader";
+
+interface SpaceMember {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+}
 
 interface Space {
   id: number;
   dbId?: string; // UUID from Supabase
   name: string;
   color: string;
+  members?: SpaceMember[];
+}
+
+// Generate a consistent numeric ID from a UUID string
+function hashStringToNumber(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash);
 }
 
 export default function Home() {
@@ -29,10 +48,35 @@ export default function Home() {
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [spacesLoading, setSpacesLoading] = useState(true);
 
-  // Fetch user's spaces from Supabase
+  // Fetch user's spaces from Supabase with real-time subscription
   useEffect(() => {
     if (user) {
       fetchSpaces();
+      
+      // Subscribe to real-time changes on spaces table
+      const spacesSubscription = supabase
+        .channel('spaces-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'spaces' },
+          () => {
+            // Refresh spaces when any change happens
+            fetchSpaces();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'space_members' },
+          () => {
+            // Refresh spaces when membership changes
+            fetchSpaces();
+          }
+        )
+        .subscribe();
+      
+      return () => {
+        supabase.removeChannel(spacesSubscription);
+      };
     } else {
       setSpaces([]);
       setSpacesLoading(false);
@@ -43,24 +87,105 @@ export default function Home() {
     if (!user) return;
     
     setSpacesLoading(true);
+    
+    // First get space IDs where user is a member
+    const { data: memberData, error: memberError } = await supabase
+      .from("space_members")
+      .select("space_id")
+      .eq("user_id", user.id);
+
+    if (memberError) {
+      console.error("Error fetching member spaces:", memberError);
+      setSpacesLoading(false);
+      return;
+    }
+
+    const spaceIds = memberData?.map(m => m.space_id) || [];
+    
+    if (spaceIds.length === 0) {
+      setSpaces([]);
+      setSpacesLoading(false);
+      return;
+    }
+
+    // Then get the actual space data
     const { data, error } = await supabase
       .from("spaces")
       .select("*")
+      .in("id", spaceIds)
       .order("created_at", { ascending: true });
 
     if (error && error.message) {
       console.error("Error fetching spaces:", error.message);
-    } else if (data) {
-      // Convert UUID to number for compatibility with existing code
-      const mappedSpaces = data.map((space, index) => ({
-        id: index + 1,
-        dbId: space.id, // Keep the original UUID
+      setSpacesLoading(false);
+      return;
+    }
+    
+    if (data) {
+      // First set spaces immediately (without members) so they appear right away
+      const initialSpaces = data.map((space) => ({
+        id: hashStringToNumber(space.id),
+        dbId: space.id,
         name: space.name,
         color: space.color,
+        members: [] as SpaceMember[],
       }));
-      setSpaces(mappedSpaces);
+      setSpaces(initialSpaces);
+      setSpacesLoading(false);
+
+      // Then fetch members in background and update
+      try {
+        const spacesWithMembers = await Promise.all(
+          data.map(async (space) => {
+            try {
+              const { data: membersData } = await supabase
+                .from("space_members")
+                .select(`
+                  user_id,
+                  profiles:user_id (
+                    id,
+                    name,
+                    avatar_url
+                  )
+                `)
+                .eq("space_id", space.id);
+
+              const members: SpaceMember[] = (membersData || [])
+                .filter((m: any) => m.profiles)
+                .map((m: any) => ({
+                  id: m.profiles.id,
+                  name: m.profiles.name || "User",
+                  avatar_url: m.profiles.avatar_url,
+                }));
+
+              return {
+                id: hashStringToNumber(space.id),
+                dbId: space.id,
+                name: space.name,
+                color: space.color,
+                members,
+              };
+            } catch {
+              // If member fetch fails, return space without members
+              return {
+                id: hashStringToNumber(space.id),
+                dbId: space.id,
+                name: space.name,
+                color: space.color,
+                members: [] as SpaceMember[],
+              };
+            }
+          })
+        );
+        
+        setSpaces(spacesWithMembers);
+      } catch (err) {
+        console.error("Error fetching space members:", err);
+        // Keep the spaces without members - already set above
+      }
+    } else {
+      setSpacesLoading(false);
     }
-    setSpacesLoading(false);
   };
 
   const handleViewChange = (view: "dashboard" | "space" | "inbox" | "calendar" | "echo", spaceId?: number) => {
@@ -79,63 +204,38 @@ export default function Home() {
   };
 
   const handleCreateSpace = async (name: string, color: string) => {
-    if (!user) {
-      console.error("No user logged in");
-      return;
-    }
+    if (!user) return;
 
-    console.log("Creating space:", { name, color, userId: user.id });
-
-    const { data, error } = await supabase
-      .from("spaces")
-      .insert({
-        name,
-        color,
-        owner_id: user.id,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error creating space:", error);
-      return;
-    }
-
-    console.log("Space created:", data);
-
-    if (data) {
-      // Also add the owner as a member
-      const { error: memberError } = await supabase
-        .from("space_members")
+    try {
+      // Create the space
+      const { data, error } = await supabase
+        .from("spaces")
         .insert({
-          space_id: data.id,
-          user_id: user.id,
-          role: "owner",
-        });
+          name,
+          color,
+          owner_id: user.id,
+        })
+        .select()
+        .single();
 
-      if (memberError) {
-        console.error("Error adding member:", memberError);
+      if (error) {
+        console.error("Error creating space:", error.message);
+        return;
       }
 
-      // Add the new space to state directly
-      const newSpaceId = spaces.length > 0 ? Math.max(...spaces.map(s => s.id)) + 1 : 1;
-      const newSpace = {
-        id: newSpaceId,
-        dbId: data.id,
-        name: data.name,
-        color: data.color,
-      };
-      
-      console.log("Adding to state:", newSpace);
-      setSpaces(prev => {
-        const updated = [...prev, newSpace];
-        console.log("Updated spaces:", updated);
-        return updated;
-      });
-      
-      // Navigate to the new space
-      setActiveView("space");
-      setActiveSpaceId(newSpaceId);
+      if (data) {
+        // Refresh spaces list from database
+        await fetchSpaces();
+        
+        // Use the consistent hash ID for the new space
+        const newSpaceId = hashStringToNumber(data.id);
+        
+        // Navigate to the new space
+        setActiveView("space");
+        setActiveSpaceId(newSpaceId);
+      }
+    } catch (err) {
+      console.error("Error in handleCreateSpace:", err);
     }
   };
 
@@ -189,6 +289,7 @@ export default function Home() {
     };
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.color !== undefined) updateData.color = updates.color;
+    if (updates.description !== undefined) updateData.description = updates.description;
 
     const { error } = await supabase
       .from("spaces")
@@ -216,20 +317,32 @@ export default function Home() {
   // Get the active space
   const activeSpace = spaces.find((space) => space.id === activeSpaceId);
 
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center bg-gray-100 dark:bg-black">
-        <div className="flex flex-col items-center gap-4">
-          <img 
-            src="/logo2.png" 
-            alt="Teamly Logo" 
-            className="w-16 h-16 object-contain animate-pulse"
-          />
-          <div className="w-8 h-8 border-4 border-[#6B2FD9]/30 border-t-[#6B2FD9] rounded-full animate-spin" />
-        </div>
-      </div>
-    );
+  // Show loading state (minimum 2 seconds to see animation, max 5 seconds timeout)
+  const [showLoader, setShowLoader] = useState(true);
+  const [loadStartTime] = useState(() => Date.now());
+  
+  useEffect(() => {
+    // Calculate remaining time to show loader (minimum 2 seconds)
+    const elapsed = Date.now() - loadStartTime;
+    const minDisplayTime = 2000; // 2 seconds minimum
+    const remainingTime = Math.max(0, minDisplayTime - elapsed);
+    
+    if (!isLoading) {
+      const timer = setTimeout(() => setShowLoader(false), remainingTime);
+      return () => clearTimeout(timer);
+    }
+    
+    // Safety timeout - never show loader for more than 5 seconds
+    const safetyTimer = setTimeout(() => {
+      console.log("Safety timeout triggered - hiding loader");
+      setShowLoader(false);
+    }, 5000);
+    
+    return () => clearTimeout(safetyTimer);
+  }, [isLoading, loadStartTime]);
+
+  if (isLoading || showLoader) {
+    return <TeamlyLoader />;
   }
 
   // Show login page if not logged in
@@ -274,6 +387,7 @@ export default function Home() {
             spaceDbId={activeSpace?.dbId}
             spaceName={activeSpace?.name || ""}
             spaceColor={activeSpace?.color || "bg-purple-500"}
+            initialMembers={activeSpace?.members || []}
             onLeaveSpace={handleLeaveSpace}
             onDeleteSpace={handleDeleteSpace}
             onArchiveSpace={handleArchiveSpace}

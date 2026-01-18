@@ -19,8 +19,19 @@ const timeSlots = [
 export function Calendar() {
   const { kanban } = useTasks();
   const { tasks: echoTasks } = useEcho();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user, profile } = useAuth();
+  
+  // Language to locale mapping
+  const localeMap: Record<string, string> = {
+    en: 'en-US',
+    es: 'es-ES',
+    pt: 'pt-BR',
+    de: 'de-DE',
+    ja: 'ja-JP',
+    ko: 'ko-KR'
+  };
+  const currentLocale = localeMap[language] || 'en-US';
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedTask, setSelectedTask] = useState<Task | EchoTask | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -58,7 +69,10 @@ export function Calendar() {
   const weekDays = useMemo(() => {
     const days = [];
     const startOfWeek = new Date(currentDate);
-    startOfWeek.setDate(currentDate.getDate() - currentDate.getDay() + 1); // Start from Monday
+    const dayOfWeek = currentDate.getDay();
+    // If Sunday (0), go back 6 days to Monday. Otherwise go back (dayOfWeek - 1) days.
+    const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    startOfWeek.setDate(currentDate.getDate() - daysToSubtract);
 
     for (let i = 0; i < 7; i++) {
       const day = new Date(startOfWeek);
@@ -171,7 +185,7 @@ export function Calendar() {
   };
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", { 
+    return date.toLocaleDateString(currentLocale, { 
       weekday: "long",
       month: "long", 
       day: "2-digit", 
@@ -181,23 +195,23 @@ export function Calendar() {
 
   const formatDayHeader = (date: Date) => {
     const day = date.getDate().toString().padStart(2, '0');
-    const weekday = date.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
+    const weekday = date.toLocaleDateString(currentLocale, { weekday: "short" }).toUpperCase();
     return { day, weekday };
   };
 
   const getWeekRange = () => {
     const start = weekDays[0];
     const end = weekDays[6];
-    const startStr = start.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
-    const endStr = end.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+    const startStr = start.toLocaleDateString(currentLocale, { month: "short", day: "2-digit" });
+    const endStr = end.toLocaleDateString(currentLocale, { month: "short", day: "2-digit" });
     return `${startStr} - ${endStr}`;
   };
 
   const getTaskTime = (task: Task | EchoTask) => {
-    if ('isAllDay' in task && task.isAllDay) return "All day";
+    if ('isAllDay' in task && task.isAllDay) return t.allDay;
     if ('dueAt' in task && task.dueAt) {
       const date = new Date(task.dueAt);
-      return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      return date.toLocaleTimeString(currentLocale, { hour: "numeric", minute: "2-digit" });
     }
     return "9:00 AM";
   };
@@ -217,7 +231,7 @@ export function Calendar() {
           <div className="mb-4">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{formatDate(new Date())}</h1>
             <p className="text-gray-500 dark:text-zinc-400 text-sm mt-1 flex items-center gap-2">
-              You have {todaysTasks.length} task{todaysTasks.length !== 1 ? 's' : ''} today
+              {t.youHaveTasks.replace('{count}', todaysTasks.length.toString()).replace('{s}', todaysTasks.length !== 1 ? 's' : '')}
               <CalendarIcon className="w-4 h-4" />
             </p>
           </div>
@@ -239,11 +253,11 @@ export function Calendar() {
                     {task.title}
                   </h3>
                   <p className={`text-sm mt-1 ${task.status === "done" ? "text-green-600 dark:text-green-400" : "text-white/80"}`}>
-                    {task.status === "done" ? "Completed" : "Due Today"}
+                    {task.status === "done" ? t.completedLabel : t.dueTodayLabel}
                   </p>
                   <div className={`flex items-center gap-2 mt-3 text-sm ${task.status === "done" ? "text-green-600 dark:text-green-400" : "text-white/80"}`}>
                     <ExternalLink className="w-4 h-4" />
-                    <span>View Details</span>
+                    <span>{t.viewDetails}</span>
                     <ChevronRight className="w-4 h-4 ml-auto" />
                   </div>
                 </div>
@@ -257,7 +271,7 @@ export function Calendar() {
           <div className="relative flex-1 max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-zinc-500" />
             <Input
-              placeholder="Search in calendar..."
+              placeholder={t.searchInCalendar}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 bg-gray-50 dark:bg-zinc-900 border-gray-200 dark:border-zinc-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-zinc-500"
@@ -412,7 +426,7 @@ export function Calendar() {
               </div>
               {selectedTask.status === "done" && (
                 <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded-full">
-                  Completed
+                  {t.completedLabel}
                 </span>
               )}
             </div>
@@ -437,11 +451,11 @@ export function Calendar() {
                 {selectedTask.title}
               </h2>
               <p className="text-gray-500 dark:text-zinc-400 text-sm mb-6">
-                {selectedTask.dueDate ? new Date(selectedTask.dueDate).toLocaleDateString("en-US", {
+                {selectedTask.dueDate ? new Date(selectedTask.dueDate).toLocaleDateString(currentLocale, {
                   weekday: "long",
                   month: "long",
                   day: "2-digit"
-                }) : "No due date"} • {getTaskTime(selectedTask)}
+                }) : t.noDueDate} • {getTaskTime(selectedTask)}
               </p>
 
               {/* Status Badge */}
@@ -474,7 +488,7 @@ export function Calendar() {
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-500 dark:text-zinc-400 mb-3 flex items-center gap-2">
                   <Users className="w-4 h-4" />
-                  Assignees
+                  {t.assignees}
                 </h3>
                 <div className="space-y-3">
                   {'assignees' in selectedTask && selectedTask.assignees?.map((assignee: { name: string; avatar: string; initials: string }, idx: number) => (
@@ -490,7 +504,7 @@ export function Calendar() {
                           {assignee.name}
                           {assignee.name === currentUser.name && (
                             <span className="text-xs bg-purple-100 dark:bg-purple-600/30 text-purple-700 dark:text-purple-400 px-2 py-0.5 rounded">
-                              You
+                              {t.youLabel}
                             </span>
                           )}
                         </p>
@@ -505,7 +519,7 @@ export function Calendar() {
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-500 dark:text-zinc-400 mb-3 flex items-center gap-2">
                   <FileText className="w-4 h-4" />
-                  Space
+                  {t.space}
                 </h3>
                 <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-zinc-800/50 rounded-xl">
                   <div className={`w-3 h-3 rounded-full ${'space' in selectedTask ? selectedTask.space?.color : 'bg-purple-500'}`} />
@@ -517,10 +531,10 @@ export function Calendar() {
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-500 dark:text-zinc-400 mb-3 flex items-center gap-2">
                   <Clock className="w-4 h-4" />
-                  Reminder
+                  {t.reminder}
                 </h3>
                 <p className="text-gray-600 dark:text-zinc-300 text-sm">
-                  {'isAllDay' in selectedTask && selectedTask.isAllDay ? "9:00 AM on due date" : "1 hour before"}
+                  {'isAllDay' in selectedTask && selectedTask.isAllDay ? t.reminderOnDueDate : t.reminderOneHour}
                 </p>
               </div>
 
@@ -532,11 +546,11 @@ export function Calendar() {
                     className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                   >
                     <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Mark as Complete
+                    {t.markAsComplete}
                   </Button>
                 )}
                 <Button variant="outline" className="w-full border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800">
-                  Edit Task
+                  {t.editTask}
                 </Button>
               </div>
             </div>

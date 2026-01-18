@@ -17,6 +17,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Teamly - Team Task Management",
   description: "Collaborative team task management and project tracking",
+  icons: {
+    icon: "/logo2.png",
+    shortcut: "/logo2.png",
+    apple: "/logo2.png",
+  },
 };
 
 export default function RootLayout({

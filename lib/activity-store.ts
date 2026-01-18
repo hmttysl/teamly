@@ -2,7 +2,7 @@
 
 export interface Activity {
   id: number;
-  type: "comment" | "move" | "complete" | "create" | "assign" | "delete";
+  type: "comment" | "move" | "complete" | "create" | "assign" | "delete" | "attachment" | "update";
   user: {
     name: string;
     avatar: string;
@@ -79,6 +79,8 @@ export const activityStore = {
       case "create": return "created";
       case "assign": return "was assigned to";
       case "delete": return "deleted";
+      case "attachment": return "added attachment to";
+      case "update": return "updated";
       default: return "updated";
     }
   },
