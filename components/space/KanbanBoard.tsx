@@ -18,6 +18,7 @@ import { spaces } from "@/lib/mock-data";
 import { useActivity } from "@/lib/use-activity";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/language-context";
+import { supabase } from "@/lib/supabase";
 
 interface ColumnProps {
   id: KanbanColumn;
@@ -176,11 +177,12 @@ function KanbanColumn({
 
 interface KanbanBoardProps {
   spaceId: number;
+  spaceDbId?: string;
   spaceName?: string;
   spaceColor?: string;
 }
 
-export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-purple-500" }: KanbanBoardProps) {
+export function KanbanBoard({ spaceId, spaceDbId, spaceName, spaceColor = "bg-purple-500" }: KanbanBoardProps) {
   const { kanban, moveTask, addTask, updateTask, deleteTask } = useSpaceTasks(spaceId);
   const { addActivity } = useActivity();
   const { user, profile } = useAuth();
@@ -198,8 +200,48 @@ export function KanbanBoard({ spaceId, spaceName, spaceColor = "bg-purple-500" }
   // All available members for assignment (just current user for now)
   const allMembers = useMemo(() => [currentUser], [currentUser]);
   
-  // Space members (excluding current user) - empty for now, will be fetched from Supabase later
-  const spaceMembers: typeof allMembers = [];
+  // Space members (excluding current user) - fetched from Supabase
+  const [spaceMembers, setSpaceMembers] = useState<typeof allMembers>([]);
+  
+  // Fetch space members from Supabase
+  useEffect(() => {
+    const fetchSpaceMembers = async () => {
+      if (!spaceDbId || !user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from("space_members")
+          .select(`
+            user_id,
+            profiles:user_id (
+              id,
+              name,
+              email,
+              avatar_url
+            )
+          `)
+          .eq("space_id", spaceDbId);
+        
+        if (error) throw error;
+        
+        const members = (data || [])
+          .filter((m: any) => m.profiles && m.user_id !== user.id) // Exclude current user
+          .map((m: any, index: number) => ({
+            id: index + 1,
+            name: m.profiles.name || "User",
+            avatar: m.profiles.avatar_url || "",
+            initials: (m.profiles.name || "U").split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2),
+            email: m.profiles.email || "",
+          }));
+        
+        setSpaceMembers(members);
+      } catch (err) {
+        console.error("Error fetching space members:", err);
+      }
+    };
+    
+    fetchSpaceMembers();
+  }, [spaceDbId, user]);
   
   // Get space info
   const spaceInfo = spaces.find(s => s.id === spaceId) || { name: spaceName || "Space", color: spaceColor };

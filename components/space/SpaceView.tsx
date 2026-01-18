@@ -280,7 +280,7 @@ export function SpaceView({
       </div>
 
       {/* Tab Content */}
-      {activeTab === "board" && <KanbanBoard spaceId={spaceId} spaceName={spaceName} spaceColor={spaceColor} />}
+      {activeTab === "board" && <KanbanBoard spaceId={spaceId} spaceDbId={spaceDbId} spaceName={spaceName} spaceColor={spaceColor} />}
       {activeTab === "members" && <SpaceMembers spaceName={spaceName} spaceId={spaceDbId} />}
       {activeTab === "settings" && (
         <SpaceSettings 
