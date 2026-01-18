@@ -343,8 +343,8 @@ export function KanbanBoard({ spaceId, spaceDbId, spaceName, spaceColor = "bg-pu
     }
   };
 
-  const handleSubmitNewTask = () => {
-    if (newTaskTitle.trim() && showAddTaskModal) {
+  const handleSubmitNewTask = async () => {
+    if (newTaskTitle.trim() && showAddTaskModal && spaceDbId) {
       // Build assignees list
       let assignees = [...selectedAssignees];
       
@@ -390,6 +390,80 @@ export function KanbanBoard({ spaceId, spaceDbId, spaceName, spaceColor = "bg-pu
         dueDateTime = new Date().toISOString();
       }
 
+      // Save task to Supabase
+      try {
+        const { data: taskData, error: taskError } = await supabase
+          .from("tasks")
+          .insert({
+            space_id: spaceDbId,
+            title: newTaskTitle,
+            description: newTaskDescription || null,
+            status: showAddTaskModal,
+            due_date: newTaskDueDate ? dueDateTime : null,
+            is_all_day: isAllDay,
+            created_by: user?.id,
+          })
+          .select()
+          .single();
+
+        if (taskError) throw taskError;
+
+        // Add assignees to task_assignees table
+        if (taskData) {
+          // Get user IDs for assignees (need to look them up from space_members)
+          const { data: memberData } = await supabase
+            .from("space_members")
+            .select("user_id, profiles:user_id(email)")
+            .eq("space_id", spaceDbId);
+
+          const assigneeUserIds: string[] = [];
+          
+          for (const assignee of assignees) {
+            // Find matching member by email
+            const member = memberData?.find((m: any) => m.profiles?.email === assignee.email);
+            if (member) {
+              assigneeUserIds.push(member.user_id);
+            } else if (assignee.email === user?.email && user?.id) {
+              // Current user
+              assigneeUserIds.push(user.id);
+            }
+          }
+
+          // Insert task assignees
+          if (assigneeUserIds.length > 0) {
+            await supabase
+              .from("task_assignees")
+              .insert(assigneeUserIds.map(userId => ({
+                task_id: taskData.id,
+                user_id: userId,
+              })));
+
+            // Send notifications to assignees (except current user)
+            const notificationsToSend = assigneeUserIds
+              .filter(userId => userId !== user?.id)
+              .map(userId => ({
+                user_id: userId,
+                type: "task_assigned",
+                title: t.newTaskAssigned || "New Task Assigned",
+                message: `${profile?.name || "Someone"} ${t.assignedYouTask || "assigned you a task"}: ${newTaskTitle}`,
+                data: {
+                  task_id: taskData.id,
+                  space_id: spaceDbId,
+                  assigned_by: user?.id,
+                },
+                read: false,
+              }));
+
+            if (notificationsToSend.length > 0) {
+              await supabase.from("notifications").insert(notificationsToSend);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error saving task to Supabase:", err);
+      }
+
+      // Also add to local state for immediate UI update
       addTask(showAddTaskModal, {
         title: newTaskTitle,
         description: newTaskDescription,
