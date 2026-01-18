@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Camera, User, Bell, Globe, Shield, LogOut, Check, AlertCircle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Camera, User, Bell, Globe, Shield, LogOut, Check, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -46,13 +46,18 @@ const getSystemTimezone = (): string => {
 
 export function ProfileSettings() {
   const { t } = useLanguage();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, refreshProfile } = useAuth();
   
   // Profile state
   const [name, setName] = useState(profile?.name || user?.email?.split('@')[0] || "");
   const [email, setEmail] = useState(user?.email || "");
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
+  
+  // Avatar state
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Notifications state
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -72,11 +77,75 @@ export function ProfileSettings() {
   const [passwordSuccess, setPasswordSuccess] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
 
-  // Update name/email when profile loads
+  // Update name/email/avatar when profile loads
   useEffect(() => {
     if (profile?.name) setName(profile.name);
     if (user?.email) setEmail(user.email);
+    if (profile?.avatar_url) setAvatarUrl(profile.avatar_url);
   }, [profile, user]);
+
+  // Handle avatar upload
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert(t.pleaseSelectImage || 'Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert(t.imageTooLarge || 'Image must be less than 2MB');
+      return;
+    }
+
+    setAvatarUploading(true);
+
+    try {
+      // Create unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      // Update profile with new avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      // Update local state
+      setAvatarUrl(publicUrl);
+      
+      // Refresh profile in auth context
+      if (refreshProfile) {
+        await refreshProfile();
+      }
+
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 2000);
+    } catch (error: any) {
+      console.error('Error uploading avatar:', error);
+      alert(error.message || t.failedToUploadImage || 'Failed to upload image');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   const handleSaveProfile = async () => {
     if (!user) return;
@@ -175,17 +244,42 @@ export function ProfileSettings() {
             <div className="flex items-center gap-6">
               <div className="relative">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage src={profile?.avatar_url || ""} />
+                  <AvatarImage src={avatarUrl} />
                   <AvatarFallback className="bg-[#6B2FD9] text-white text-xl">{(name || "U").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}</AvatarFallback>
                 </Avatar>
-                <button className="absolute bottom-0 right-0 bg-[#6B2FD9] hover:bg-[#5a27b8] text-white rounded-full p-2 shadow-lg transition-colors">
-                  <Camera className="w-4 h-4" />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  className="absolute bottom-0 right-0 bg-[#6B2FD9] hover:bg-[#5a27b8] text-white rounded-full p-2 shadow-lg transition-colors disabled:opacity-50"
+                >
+                  {avatarUploading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Camera className="w-4 h-4" />
+                  )}
                 </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
               </div>
               <div>
                 <h3 className="font-medium text-gray-900 dark:text-white mb-1">{t.profilePhoto}</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">{t.uploadNewPhoto}</p>
-                <Button variant="outline" size="sm">{t.uploadNewPhotoBtn}</Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={avatarUploading}
+                >
+                  {avatarUploading ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : null}
+                  {t.uploadNewPhotoBtn}
+                </Button>
               </div>
             </div>
 

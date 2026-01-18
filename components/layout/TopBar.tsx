@@ -35,9 +35,11 @@ const languages: LanguageOption[] = [
 interface TopBarProps {
   activeView: "dashboard" | "space" | "inbox" | "calendar" | "settings" | "echo";
   onProfileSettingsClick: () => void;
+  activeSpaceId?: string;
+  activeSpaceName?: string;
 }
 
-export function TopBar({ activeView, onProfileSettingsClick }: TopBarProps) {
+export function TopBar({ activeView, onProfileSettingsClick, activeSpaceId, activeSpaceName }: TopBarProps) {
   const { language, setLanguage, t } = useLanguage();
   const [langMenuOpen, setLangMenuOpen] = useState(false);
 
@@ -119,8 +121,8 @@ export function TopBar({ activeView, onProfileSettingsClick }: TopBarProps) {
         </NotificationPopover>
 
         {/* Only show Invite button when viewing a space */}
-        {activeView === "space" && (
-          <InviteMembersDialog>
+        {activeView === "space" && activeSpaceId && (
+          <InviteMembersDialog spaceId={activeSpaceId} spaceName={activeSpaceName}>
             <Button
               variant="outline"
               size="sm"
@@ -129,7 +131,7 @@ export function TopBar({ activeView, onProfileSettingsClick }: TopBarProps) {
               <div className="relative">
                 <UserPlus className="w-4 h-4" />
               </div>
-              Invite
+              {t.invite || "Invite"}
             </Button>
           </InviteMembersDialog>
         )}

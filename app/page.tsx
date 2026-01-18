@@ -368,13 +368,27 @@ export default function Home() {
         <TopBar 
           activeView={activeView === "settings" ? "dashboard" : activeView} 
           onProfileSettingsClick={handleProfileSettingsClick}
+          activeSpaceId={activeSpace?.dbId}
+          activeSpaceName={activeSpace?.name}
         />
 
         {/* Content Area */}
         {activeView === "dashboard" ? (
           <Dashboard />
         ) : activeView === "inbox" ? (
-          <Inbox />
+          <Inbox 
+            onNavigateToSpace={(dbId) => {
+              // Find the space by dbId and navigate to it
+              const space = spaces.find(s => s.dbId === dbId);
+              if (space) {
+                setActiveSpaceId(space.id);
+                setActiveView("space");
+              } else {
+                // Refresh spaces and try again
+                fetchSpaces();
+              }
+            }}
+          />
         ) : activeView === "calendar" ? (
           <Calendar />
         ) : activeView === "settings" ? (
