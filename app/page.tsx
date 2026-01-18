@@ -224,6 +224,19 @@ export default function Home() {
       }
 
       if (data) {
+        // Add owner as a member of the space
+        const { error: memberError } = await supabase
+          .from("space_members")
+          .insert({
+            space_id: data.id,
+            user_id: user.id,
+            role: "owner",
+          });
+
+        if (memberError) {
+          console.error("Error adding owner to space_members:", memberError.message);
+        }
+
         // Refresh spaces list from database
         await fetchSpaces();
         
